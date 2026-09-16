@@ -1,2 +1,5 @@
-[start]
-cmd = "php -S 0.0.0.0:$PORT"
+[variables]
+NIXPACKS_PHP_ROOT_DIR = "."
+
+[phases.start]
+cmd = "frankenphp run --config Caddyfile"
