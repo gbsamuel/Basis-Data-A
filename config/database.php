@@ -8,12 +8,12 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Database Credentials (Supports local XAMPP and Cloud/Vercel Environment Variables)
-define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
+// Database Credentials (TiDB Cloud Connection)
+define('DB_HOST', getenv('DB_HOST') ?: 'gateway01.ap-southeast-1.prod.aws.tidbcloud.com');
 define('DB_NAME', getenv('DB_NAME') ?: 'sireka_db');
-define('DB_USER', getenv('DB_USER') ?: 'root');
-define('DB_PASS', getenv('DB_PASS') !== false ? getenv('DB_PASS') : '');
-define('DB_PORT', getenv('DB_PORT') ?: '3306');
+define('DB_USER', getenv('DB_USER') ?: '3QykrhkWC6SQyZr.root');
+define('DB_PASS', getenv('DB_PASS') !== false ? getenv('DB_PASS') : '<PASSWORD>');
+define('DB_PORT', getenv('DB_PORT') ?: '4000');
 
 // Base URL helper
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['SERVER_PORT'] ?? 80) == 443) ? "https://" : "http://";
@@ -59,6 +59,7 @@ function getDB() {
                 PDO::ATTR_EMULATE_PREPARES   => false,
             ];
             if (DB_HOST !== 'localhost' && DB_HOST !== '127.0.0.1') {
+                $options[PDO::MYSQL_ATTR_SSL_CA] = true;
                 $options[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = false;
             }
             $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
