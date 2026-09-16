@@ -8,19 +8,22 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Database Credentials
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'sireka_db');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_PORT', '3306');
+// Database Credentials (Supports local XAMPP and Cloud/Vercel Environment Variables)
+define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
+define('DB_NAME', getenv('DB_NAME') ?: 'sireka_db');
+define('DB_USER', getenv('DB_USER') ?: 'root');
+define('DB_PASS', getenv('DB_PASS') !== false ? getenv('DB_PASS') : '');
+define('DB_PORT', getenv('DB_PORT') ?: '3306');
 
 // Base URL helper
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['SERVER_PORT'] ?? 80) == 443) ? "https://" : "http://";
 $hostName = $_SERVER['HTTP_HOST'] ?? 'localhost';
 
 $projectRoot = '';
-if (php_sapi_name() === 'cli-server') {
+if (!empty($_SERVER['VERCEL'])) {
+    // Hosted on Vercel
+    $projectRoot = '';
+} elseif (php_sapi_name() === 'cli-server') {
     // When running with php -S localhost:8000
     $projectRoot = '';
 } else {
