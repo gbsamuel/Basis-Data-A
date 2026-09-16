@@ -1,0 +1,22 @@
+# Dependencies
+/vendor/
+BasdataKelompokA/vendor/
+/node_modules/
+BasdataKelompokA/node_modules/
+
+# Environment
+.env
+.env.backup
+.env.production
+
+# Uploaded candidate files (preserves folder structure)
+/uploads/cv/*
+!/uploads/cv/.gitkeep
+/uploads/profiles/*
+!/uploads/profiles/.gitkeep
+
+# OS / Editor
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

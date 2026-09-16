@@ -1,0 +1,551 @@
+/* ==========================================================
+   SIREKA - Modern Corporate Blue Design System
+   ========================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+    --primary-color: #1e40af;
+    --primary-hover: #1d4ed8;
+    --primary-light: #eff6ff;
+    --primary-border: #bfdbfe;
+    --secondary-bg: #f8fafc;
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --card-border: #e2e8f0;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --danger-color: #ef4444;
+    --purple-color: #8b5cf6;
+    --sidebar-width: 260px;
+    --font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: var(--font-family);
+    color: var(--text-main);
+    background-color: var(--secondary-bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+}
+
+/* Typography & Headings */
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+    color: var(--text-main);
+    letter-spacing: -0.02em;
+}
+
+a {
+    color: var(--primary-color);
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+a:hover {
+    color: var(--primary-hover);
+}
+
+/* Custom Backgrounds & Utilities */
+.bg-corporate-blue {
+    background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #3b82f6 100%);
+    color: #ffffff;
+}
+
+.bg-purple {
+    background-color: var(--purple-color) !important;
+}
+
+.text-purple {
+    color: var(--purple-color) !important;
+}
+
+.card-custom {
+    background: #ffffff;
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04), 0 2px 4px -2px rgba(0, 0, 0, 0.03);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-hover:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 20px -3px rgba(0, 0, 0, 0.08);
+}
+
+/* Buttons */
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    padding: 0.6rem 1.4rem;
+    font-weight: 600;
+    border-radius: 10px;
+}
+
+.btn-primary:hover, .btn-primary:focus {
+    background-color: var(--primary-hover);
+    border-color: var(--primary-hover);
+}
+
+.btn-outline-primary {
+    color: var(--primary-color);
+    border-color: var(--primary-border);
+    font-weight: 600;
+    border-radius: 10px;
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: #ffffff;
+}
+
+/* Badges */
+.badge {
+    font-weight: 600;
+    padding: 0.45em 0.75em;
+    border-radius: 8px;
+    font-size: 0.8rem;
+}
+
+/* Progress Bar Match Score */
+.progress-match {
+    height: 10px;
+    border-radius: 6px;
+    background-color: #e2e8f0;
+}
+
+.progress-match .progress-bar {
+    border-radius: 6px;
+    transition: width 0.6s ease;
+}
+
+.score-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.65rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    border-radius: 20px;
+}
+
+.score-high {
+    background-color: #dcfce7;
+    color: #15803d;
+}
+
+.score-medium {
+    background-color: #fef9c3;
+    color: #854d0e;
+}
+
+.score-low {
+    background-color: #fee2e2;
+    color: #b91c1c;
+}
+
+/* Sidebar Layout */
+.dashboard-layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+.sidebar {
+    width: var(--sidebar-width);
+    background: #ffffff;
+    border-right: 1px solid var(--card-border);
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    z-index: 1000;
+}
+
+.sidebar-brand {
+    padding: 1.5rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--primary-color);
+    border-bottom: 1px solid var(--card-border);
+}
+
+.sidebar-nav {
+    padding: 1rem 0.75rem;
+    list-style: none;
+    margin: 0;
+    flex-grow: 1;
+}
+
+.sidebar-item {
+    margin-bottom: 0.25rem;
+}
+
+.sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    border-radius: 10px;
+    transition: all 0.2s;
+}
+
+.sidebar-link i {
+    font-size: 1.2rem;
+}
+
+.sidebar-link:hover {
+    background-color: var(--primary-light);
+    color: var(--primary-color);
+}
+
+.sidebar-link.active {
+    background-color: var(--primary-color);
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.sidebar-link.active i {
+    color: #ffffff;
+}
+
+.main-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    background-color: var(--secondary-bg);
+}
+
+.top-navbar {
+    background: #ffffff;
+    border-bottom: 1px solid var(--card-border);
+    padding: 0.85rem 1.5rem;
+}
+
+/* ==========================================================
+   TIMELINE TRACKING SYSTEM (Horizontal & Vertical Responsive)
+   ========================================================== */
+.timeline-steps {
+    display: flex;
+    justify-content: space-between;
+    position: relative;
+    margin: 2rem 0;
+    padding: 0;
+}
+
+.timeline-steps::before {
+    content: '';
+    position: absolute;
+    top: 24px;
+    left: 40px;
+    right: 40px;
+    height: 4px;
+    background: #e2e8f0;
+    z-index: 1;
+}
+
+.timeline-step {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    flex: 1;
+}
+
+.timeline-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 3px solid #cbd5e1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    color: #94a3b8;
+    margin-bottom: 0.75rem;
+    transition: all 0.3s ease;
+}
+
+.timeline-step.completed .timeline-icon {
+    background: var(--success-color);
+    border-color: var(--success-color);
+    color: #ffffff;
+}
+
+.timeline-step.current .timeline-icon {
+    background: var(--primary-color);
+    border-color: var(--primary-border);
+    color: #ffffff;
+    box-shadow: 0 0 0 6px rgba(30, 64, 175, 0.2);
+    animation: pulse-ring 2s infinite;
+}
+
+.timeline-step.rejected .timeline-icon {
+    background: var(--danger-color);
+    border-color: var(--danger-color);
+    color: #ffffff;
+}
+
+.timeline-step.talent-pool .timeline-icon {
+    background: var(--purple-color);
+    border-color: var(--purple-color);
+    color: #ffffff;
+}
+
+.timeline-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin-bottom: 0.2rem;
+    color: var(--text-main);
+}
+
+.timeline-date {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+@keyframes pulse-ring {
+    0% {
+        box-shadow: 0 0 0 0 rgba(30, 64, 175, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(30, 64, 175, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(30, 64, 175, 0);
+    }
+}
+
+/* Vertical Timeline for Mobile */
+@media (max-width: 991px) {
+    .timeline-steps {
+        flex-direction: column;
+        margin: 1.5rem 0;
+    }
+
+    .timeline-steps::before {
+        top: 24px;
+        bottom: 24px;
+        left: 24px;
+        width: 4px;
+        height: auto;
+        right: auto;
+    }
+
+    .timeline-step {
+        display: flex;
+        align-items: flex-start;
+        text-align: left;
+        margin-bottom: 1.5rem;
+        gap: 1.25rem;
+    }
+
+    .timeline-icon {
+        flex-shrink: 0;
+        margin-bottom: 0;
+    }
+}
+
+/* Letter of Acceptance (LoA) Styling & Print Layout */
+.loa-container {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 3.5rem;
+    max-width: 850px;
+    margin: 0 auto;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+}
+
+.loa-header {
+    border-bottom: 3px double #0f172a;
+    padding-bottom: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.loa-signature {
+    margin-top: 3.5rem;
+}
+
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    .loa-container, .loa-container * {
+        visibility: visible;
+    }
+    .loa-container {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        max-width: 100%;
+        border: none;
+        box-shadow: none;
+        padding: 0;
+    }
+    .no-print {
+        display: none !important;
+    }
+}
+
+/* ==========================================================
+   SCROLL REVEAL ANIMATIONS (MOVE EFFECT & MUNCUL SATU-SATU)
+   ========================================================== */
+
+/* 1. Top Scroll Reading Progress Indicator */
+.scroll-progress-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 0%;
+    height: 3.5px;
+    background: linear-gradient(90deg, var(--primary-color) 0%, #3b82f6 50%, var(--purple-color) 100%);
+    z-index: 99999;
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.6);
+    pointer-events: none;
+    transition: width 0.12s ease-out;
+}
+
+/* 2. Sticky Navbar Elevation & Glassmorphism on Scroll */
+.navbar.sticky-top, .top-navbar {
+    transition: background-color 0.3s ease, box-shadow 0.3s ease, backdrop-filter 0.3s ease;
+}
+
+body.is-scrolled .navbar.sticky-top {
+    background-color: rgba(255, 255, 255, 0.92) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 8px 20px -4px rgba(15, 23, 42, 0.08) !important;
+}
+
+body.is-scrolled .top-navbar {
+    box-shadow: 0 4px 14px -2px rgba(15, 23, 42, 0.06);
+}
+
+/* 3. Object Move & Stagger Reveal System */
+.reveal-on-scroll,
+.reveal-item {
+    opacity: 0;
+    transform: translateY(42px) scale(0.97);
+    transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1), transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: opacity, transform;
+}
+
+.reveal-on-scroll.revealed,
+.reveal-item.revealed {
+    opacity: 1 !important;
+    transform: translateY(0) scale(1) !important;
+}
+
+/* Direction-specific move styles */
+.reveal-fade-up {
+    opacity: 0;
+    transform: translateY(48px);
+    transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: opacity, transform;
+}
+
+.reveal-fade-up.revealed {
+    opacity: 1 !important;
+    transform: translateY(0) !important;
+}
+
+.reveal-fade-down {
+    opacity: 0;
+    transform: translateY(-40px);
+    transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: opacity, transform;
+}
+
+.reveal-fade-down.revealed {
+    opacity: 1 !important;
+    transform: translateY(0) !important;
+}
+
+.reveal-fade-left {
+    opacity: 0;
+    transform: translateX(-42px);
+    transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: opacity, transform;
+}
+
+.reveal-fade-left.revealed {
+    opacity: 1 !important;
+    transform: translateX(0) !important;
+}
+
+.reveal-fade-right {
+    opacity: 0;
+    transform: translateX(42px);
+    transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: opacity, transform;
+}
+
+.reveal-fade-right.revealed {
+    opacity: 1 !important;
+    transform: translateX(0) !important;
+}
+
+.reveal-scale {
+    opacity: 0;
+    transform: scale(0.9);
+    transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1), transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: opacity, transform;
+}
+
+.reveal-scale.revealed {
+    opacity: 1 !important;
+    transform: scale(1) !important;
+}
+
+/* Stagger delays (Muncul Satu-Satu) */
+.reveal-delay-1 { transition-delay: 0.08s !important; }
+.reveal-delay-2 { transition-delay: 0.16s !important; }
+.reveal-delay-3 { transition-delay: 0.24s !important; }
+.reveal-delay-4 { transition-delay: 0.32s !important; }
+.reveal-delay-5 { transition-delay: 0.40s !important; }
+.reveal-delay-6 { transition-delay: 0.48s !important; }
+.reveal-delay-7 { transition-delay: 0.56s !important; }
+.reveal-delay-8 { transition-delay: 0.64s !important; }
+
+/* Subtle floating pulse */
+@keyframes softFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+}
+
+.animate-soft-float {
+    animation: softFloat 3.5s ease-in-out infinite;
+}
+
+/* Accessibility: respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto !important;
+    }
+    .reveal-on-scroll,
+    .reveal-item,
+    .reveal-fade-up,
+    .reveal-fade-down,
+    .reveal-fade-left,
+    .reveal-fade-right,
+    .reveal-scale {
+        opacity: 1 !important;
+        transform: none !important;
+        transition: none !important;
+    }
+}
+
+

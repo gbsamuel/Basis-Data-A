@@ -1,0 +1,78 @@
+#!/usr/bin/env php
+<?php
+/**
+ * SIREKA Artisan CLI Runner
+ * Memungkinkan menjalankan project dengan perintah: php artisan serve
+ */
+
+define('SIREKA_ROOT', __DIR__);
+
+$argv = $_SERVER['argv'] ?? [];
+$command = $argv[1] ?? 'help';
+
+// Parse options
+$port = 8000;
+$host = '127.0.0.1';
+
+foreach ($argv as $arg) {
+    if (strpos($arg, '--port=') === 0) {
+        $port = (int)substr($arg, 7);
+    } elseif (strpos($arg, '--host=') === 0) {
+        $host = substr($arg, 7);
+    }
+}
+
+switch ($command) {
+    case 'serve':
+        echo "\n";
+        echo "  \033[32m\033[1mSIREKA\033[0m \033[90mIT Career & Recruitment Portal - PT Solusi Teknologi Nusantara\033[0m\n";
+        echo "  \033[34mINFO\033[0m  Server running on [\033[1;36mhttp://{$host}:{$port}\033[0m].\n\n";
+        echo "  \033[90mPress Ctrl+C to stop the server\033[0m\n\n";
+
+        // Check if MySQL is running
+        $socket = @fsockopen('127.0.0.1', 3306, $errno, $errstr, 1);
+        if (!$socket) {
+            echo "  \033[33m\033[1m[PERINGATAN]\033[0m MySQL belum berjalan di port 3306.\n";
+            echo "  Pastikan MySQL di XAMPP / Laragon sudah di-Start.\n\n";
+        } else {
+            fclose($socket);
+        }
+
+        // Run PHP built-in server pointing to project root
+        $cmd = sprintf(
+            '"%s" -S %s:%d -t "%s"',
+            PHP_BINARY,
+            $host,
+            $port,
+            SIREKA_ROOT
+        );
+        passthru($cmd);
+        break;
+
+    case 'migrate':
+    case 'migrate:fresh':
+    case 'db:seed':
+        echo "\n  Mengimpor database sireka_db dari database.sql...\n";
+        $mysqlBin = 'C:\\xampp\\mysql\\bin\\mysql.exe';
+        if (!file_exists($mysqlBin)) {
+            $mysqlBin = 'mysql';
+        }
+        $cmd = "\"{$mysqlBin}\" -u root sireka_db -e \"source database.sql\"";
+        system($cmd, $ret);
+        if ($ret === 0) {
+            echo "  \033[32mSUCCESS\033[0m Database sireka_db berhasil diperbarui!\n\n";
+        } else {
+            echo "  \033[31mERROR\033[0m Gagal mengimpor database. Pastikan MySQL aktif.\n\n";
+        }
+        break;
+
+    case 'help':
+    default:
+        echo "\n";
+        echo "  \033[32m\033[1mSIREKA CLI (Artisan Runner)\033[0m\n";
+        echo "  Daftar perintah yang tersedia:\n";
+        echo "    php artisan serve             Menjalankan server web di http://127.0.0.1:8000\n";
+        echo "    php artisan serve --port=8080 Menjalankan server pada port kustom\n";
+        echo "    php artisan migrate:fresh     Reset & import ulang database sireka_db dari database.sql\n\n";
+        break;
+}
