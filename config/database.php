@@ -8,12 +8,22 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Database Credentials (Local XAMPP as default, with Cloud Environment Variables support)
-define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
-define('DB_NAME', getenv('DB_NAME') ?: 'sireka_db');
-define('DB_USER', getenv('DB_USER') ?: 'root');
-define('DB_PASS', getenv('DB_PASS') !== false ? getenv('DB_PASS') : '');
-define('DB_PORT', getenv('DB_PORT') ?: '3306');
+// Database Credentials (Auto-detects Railway Cloud vs Local XAMPP)
+if (!empty(getenv('RAILWAY_ENVIRONMENT')) || !empty(getenv('VERCEL')) || !empty(getenv('PORT'))) {
+    // Cloud Deployment (TiDB Cloud)
+    define('DB_HOST', getenv('DB_HOST') ?: 'gateway01.ap-southeast-1.prod.aws.tidbcloud.com');
+    define('DB_NAME', getenv('DB_NAME') ?: 'sireka_db');
+    define('DB_USER', getenv('DB_USER') ?: '3QykrhkWC6SQyZr.root');
+    define('DB_PASS', getenv('DB_PASS') !== false ? getenv('DB_PASS') : '<PASSWORD>');
+    define('DB_PORT', getenv('DB_PORT') ?: '4000');
+} else {
+    // Local XAMPP
+    define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
+    define('DB_NAME', getenv('DB_NAME') ?: 'sireka_db');
+    define('DB_USER', getenv('DB_USER') ?: 'root');
+    define('DB_PASS', getenv('DB_PASS') !== false ? getenv('DB_PASS') : '');
+    define('DB_PORT', getenv('DB_PORT') ?: '3306');
+}
 
 // Base URL helper
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || ($_SERVER['SERVER_PORT'] ?? 80) == 443) ? "https://" : "http://";
