@@ -68,16 +68,23 @@ function getDB() {
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES   => false,
             ];
-            if (DB_HOST !== 'localhost' && DB_HOST !== '127.0.0.1') {
+            if (defined('Pdo\Mysql::ATTR_SSL_CA')) {
+                $options[\Pdo\Mysql::ATTR_SSL_CA] = true;
+            } elseif (defined('PDO::MYSQL_ATTR_SSL_CA')) {
                 $options[PDO::MYSQL_ATTR_SSL_CA] = true;
+            }
+            if (defined('Pdo\Mysql::ATTR_SSL_VERIFY_SERVER_CERT')) {
+                $options[\Pdo\Mysql::ATTR_SSL_VERIFY_SERVER_CERT] = false;
+            } elseif (defined('PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT')) {
                 $options[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = false;
             }
             $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
-        } catch (PDOException $e) {
+        } catch (Throwable $e) {
+            http_response_code(200);
             die("<div style='font-family:sans-serif;padding:30px;background:#fff5f5;border:1px solid #feb2b2;color:#9b2c2c;border-radius:8px;max-width:700px;margin:50px auto;'>"
-                . "<h2 style='margin-top:0;'>Koneksi Database Gagal</h2>"
-                . "<p>Pastikan MySQL di Laragon sudah dinyalakan (Running) dan database <code>" . htmlspecialchars(DB_NAME) . "</code> telah diimport dari file <code>database.sql</code>.</p>"
-                . "<p><strong>Detail Error:</strong> " . htmlspecialchars($e->getMessage()) . "</p>"
+                . "<h2 style='margin-top:0;'>Koneksi Database Belum Berhasil</h2>"
+                . "<p>Mencoba terhubung ke: <code>" . htmlspecialchars(DB_HOST) . ":" . htmlspecialchars(DB_PORT) . "</code> (Database: <code>" . htmlspecialchars(DB_NAME) . "</code>)</p>"
+                . "<p><strong>Detail Pesan:</strong> " . htmlspecialchars($e->getMessage()) . "</p>"
                 . "</div>");
         }
     }
