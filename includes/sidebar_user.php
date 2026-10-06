@@ -2,21 +2,29 @@
 $activeSidebar = $activeSidebar ?? 'dashboard';
 $user = currentUser();
 ?>
-<aside class="sidebar">
+<aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">
         <div class="d-inline-flex align-items-center justify-content-center bg-primary text-white rounded-3 p-1 px-2">
             <i class="bi bi-briefcase-fill fs-5"></i>
         </div>
-        <div class="d-flex flex-column">
-            <span class="fs-5 leading-tight">SIREKA</span>
-            <small class="text-muted fw-normal fs-7" style="font-size:0.75rem;">Portal Pelamar</small>
-        </div>
+        <span class="fs-5 leading-tight">SIREKA</span>
     </div>
 
+    <!-- Tombol untuk menutup sidebar -->
+    <button type="button" class="sidebar-close" id="sidebarClose" title="Tutup menu">
+        <i class="bi bi-x-lg"></i>
+    </button>
+
     <div class="p-3 border-bottom bg-light d-flex align-items-center gap-2">
-        <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold" style="width: 36px; height: 36px;">
-            <?= strtoupper(substr($user['nama'] ?? 'U', 0, 1)) ?>
-        </div>
+        <!-- Foto profil jika sudah diunggah, jika belum tampilkan huruf awal nama -->
+        <?php if (!empty($user['profile_photo'])): ?>
+            <img src="<?= BASE_URL ?>/uploads/profiles/<?= htmlspecialchars($user['profile_photo']) ?>"
+                 class="rounded-circle" style="width: 36px; height: 36px; object-fit: cover;" alt="Foto profil">
+        <?php else: ?>
+            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold" style="width: 36px; height: 36px;">
+                <?= strtoupper(substr($user['nama'] ?? 'U', 0, 1)) ?>
+            </div>
+        <?php endif; ?>
         <div class="overflow-hidden">
             <div class="fw-bold text-truncate" style="font-size: 0.88rem;"><?= htmlspecialchars($user['nama'] ?? 'Pelamar') ?></div>
             <small class="text-muted d-block text-truncate" style="font-size: 0.72rem;"><?= htmlspecialchars($user['email'] ?? '') ?></small>
@@ -46,12 +54,6 @@ $user = currentUser();
             <a href="<?= BASE_URL ?>/user/interview.php" class="sidebar-link <?= $activeSidebar === 'interview' ? 'active' : '' ?>">
                 <i class="bi bi-camera-video"></i>
                 <span>Jadwal Interview</span>
-            </a>
-        </li>
-        <li class="sidebar-item">
-            <a href="<?= BASE_URL ?>/user/profile.php" class="sidebar-link <?= $activeSidebar === 'profile' ? 'active' : '' ?>">
-                <i class="bi bi-person-badge"></i>
-                <span>Profil & Keahlian</span>
             </a>
         </li>
         <li class="sidebar-item">

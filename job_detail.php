@@ -72,7 +72,7 @@ require_once __DIR__ . '/includes/navbar.php';
                     <a href="<?= BASE_URL ?>/auth/login.php?redirect=job_detail.php?id=<?= $jobId ?>" class="btn btn-warning text-dark fw-bold px-4 py-2 shadow">
                         <i class="bi bi-box-arrow-in-right me-1"></i> Login untuk Melamar
                     </a>
-                <?php elseif (hasRole(['admin', 'interviewer'])): ?>
+                <?php elseif (hasRole(['hr', 'admin'])): ?>
                     <span class="badge bg-secondary p-2">Mode Admin / HR</span>
                 <?php elseif ($alreadyApplied): ?>
                     <div class="d-flex gap-2">
@@ -208,7 +208,7 @@ require_once __DIR__ . '/includes/navbar.php';
                         <a href="<?= BASE_URL ?>/user/tracking.php?id=<?= $applicationId ?>" class="btn btn-warning w-100 py-2 text-dark fw-bold">
                             <i class="bi bi-clock-history me-1"></i> Pantau Proses Lamaran
                         </a>
-                    <?php elseif (!hasRole(['admin', 'interviewer'])): ?>
+                    <?php elseif (!hasRole(['hr', 'admin'])): ?>
                         <a href="<?= BASE_URL ?>/user/apply.php?job_id=<?= $jobId ?>" class="btn btn-primary w-100 py-2 fw-bold">
                             Lamar Sekarang
                         </a>

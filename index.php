@@ -33,9 +33,11 @@ require_once __DIR__ . '/includes/header.php';
 require_once __DIR__ . '/includes/navbar.php';
 ?>
 
-<!-- Hero Section (Centered) -->
-<section class="bg-corporate-blue py-5 text-white position-relative overflow-hidden">
-    <div class="container py-lg-5 text-center">
+<!-- Hero Section (With Modern Dynamic Moving Building Background) -->
+<section class="hero-building-section py-5 text-white position-relative overflow-hidden">
+    <div class="hero-building-bg" id="heroBuildingBg" aria-hidden="true"></div>
+    <div class="hero-building-overlay" aria-hidden="true"></div>
+    <div class="container py-lg-5 text-center hero-building-content">
         <div class="row justify-content-center">
             <div class="col-lg-9 reveal-fade-up">
                 <span class="badge bg-white text-primary mb-3 px-3 py-2 rounded-pill fw-bold shadow-sm animate-soft-float">

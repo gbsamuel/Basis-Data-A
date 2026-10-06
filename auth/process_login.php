@@ -42,9 +42,6 @@ if (!empty($redirect)) {
     exit;
 }
 
-if ($user['role'] === 'admin' || $user['role'] === 'interviewer') {
-    header('Location: ' . BASE_URL . '/admin/dashboard.php');
-} else {
-    header('Location: ' . BASE_URL . '/user/dashboard.php');
-}
+// Arahkan ke halaman pertama sesuai role (lihat fungsi homeUrl di config/database.php)
+header('Location: ' . homeUrl());
 exit;

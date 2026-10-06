@@ -42,7 +42,7 @@ CREATE TABLE `user_all` (
     `tahun_lulus` YEAR NOT NULL,
     `alamat` TEXT NOT NULL,
     `password` VARCHAR(255) NOT NULL,
-    `role` ENUM('user', 'admin', 'interviewer') NOT NULL DEFAULT 'user',
+    `role` ENUM('user', 'hr', 'admin') NOT NULL DEFAULT 'user',   -- user = pelamar, hr = tim rekrutmen, admin = pengelola sistem & akun
     `profile_photo` VARCHAR(255) DEFAULT NULL,
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -338,15 +338,20 @@ INSERT INTO `skill` (`id_skill`, `nama_skill`, `category`) VALUES
 (17, 'Git & Version Control', 'Tools & DevOps'),
 (18, 'Linux System Administration', 'Infrastructure');
 
--- 5. Users (Admin, Interviewer, Applicants)
+-- 5. Users (Admin, HR, Applicants)
 -- admin123 => $2y$12$0MmT6xdf2xYauP.U26CUp.KueKdg1ZKplA9hs8JDvk6glncOxHuEa
 -- user123  => $2y$12$Fr70W3R5fPZqOdTmGC1NPOCdgM2QjK7qnh6QhiwcXKe2CVGdgxhQi
 
 INSERT INTO `user_all` (`nik`, `nama`, `email`, `no_telepon`, `tanggal_lahir`, `pendidikan_terakhir`, `tahun_lulus`, `alamat`, `password`, `role`, `profile_photo`) VALUES
--- Admin
-('3171012301900001', 'Admin HR Corporate', 'admin@sireka.com', '081199887766', '1990-01-23', 'S1 Sistem Informasi', 2012, 'Jl. HR Rasuna Said Kav 10, Jakarta Selatan', '$2y$12$0MmT6xdf2xYauP.U26CUp.KueKdg1ZKplA9hs8JDvk6glncOxHuEa', 'admin', NULL),
--- Interviewers (Internal IT Leads)
-('3171012503880002', 'Dewi Lestari, M.Psi', 'dewi.recruiter@sireka.com', '081233445566', '1988-03-25', 'S2 Psikologi Industri', 2013, 'Jl. Tebet Barat Dalam No. 12, Jakarta Selatan', '$2y$12$0MmT6xdf2xYauP.U26CUp.KueKdg1ZKplA9hs8JDvk6glncOxHuEa', 'interviewer', NULL),
+-- Admin (pengelola sistem dan akun, password: cobain)
+('3171019999000008', 'Admin SIREKA', 'admin@gmail.com', '081200000008', '1993-01-01', 'S1 Sistem Informasi', 2015, 'Jakarta Selatan', '$2y$12$zkU1PsVT7r6v3SuKm69DuuU0G4ezn2Rhmcw.nLVZ4wQwN4QBpe886', 'admin', NULL),
+-- HR (tim rekrutmen)
+('3171012301900001', 'Admin HR Corporate', 'admin@sireka.com', '081199887766', '1990-01-23', 'S1 Sistem Informasi', 2012, 'Jl. HR Rasuna Said Kav 10, Jakarta Selatan', '$2y$12$0MmT6xdf2xYauP.U26CUp.KueKdg1ZKplA9hs8JDvk6glncOxHuEa', 'hr', NULL),
+-- Akun HR tambahan (password: cobain)
+('3171019999000006', 'HR SIREKA', 'HR@gmail.com', '081200000006', '1995-01-01', 'S1 Psikologi', 2017, 'Jakarta Selatan', '$2y$12$awzkS.H5g3ueQM2Ftt42QOHKoO1VuGmz5.Pnzx7HfPyPg47r840Qe', 'hr', NULL),
+('3171019999000007', 'Interviewer SIREKA', 'interviewer@gmail.com', '081200000007', '1994-01-01', 'S1 Teknik Informatika', 2016, 'Jakarta Selatan', '$2y$12$awzkS.H5g3ueQM2Ftt42QOHKoO1VuGmz5.Pnzx7HfPyPg47r840Qe', 'hr', NULL),
+-- HR (sebelumnya role interviewer)
+('3171012503880002', 'Dewi Lestari, M.Psi', 'dewi.recruiter@sireka.com', '081233445566', '1988-03-25', 'S2 Psikologi Industri', 2013, 'Jl. Tebet Barat Dalam No. 12, Jakarta Selatan', '$2y$12$0MmT6xdf2xYauP.U26CUp.KueKdg1ZKplA9hs8JDvk6glncOxHuEa', 'hr', NULL),
 -- Applicants (12 Candidates)
 ('3201011505990001', 'Budi Santoso', 'budi.santoso@gmail.com', '081234567891', '1999-05-15', 'S1 Teknik Informatika', 2022, 'Jl. Melati No. 14, Depok, Jawa Barat', '$2y$12$Fr70W3R5fPZqOdTmGC1NPOCdgM2QjK7qnh6QhiwcXKe2CVGdgxhQi', 'user', NULL),
 ('3201012008980002', 'Siti Rahmawati', 'siti.rahmawati@gmail.com', '081234567892', '1998-08-20', 'S1 Statistika', 2021, 'Jl. Anggrek Raya No. 5, Bogor, Jawa Barat', '$2y$12$Fr70W3R5fPZqOdTmGC1NPOCdgM2QjK7qnh6QhiwcXKe2CVGdgxhQi', 'user', NULL),
@@ -363,14 +368,19 @@ INSERT INTO `user_all` (`nik`, `nama`, `email`, `no_telepon`, `tanggal_lahir`, `
 
 -- 6. Company Admin Mapping
 INSERT INTO `company_admin` (`id_admin`, `id_company`, `nik`, `position`) VALUES
-(1, 1, '3171012301900001', 'Head of Talent Acquisition & People Ops');
+(1, 1, '3171012301900001', 'Head of Talent Acquisition & People Ops'),
+(2, 1, '3171019999000006', 'HR Recruiter'),
+(3, 1, '3171012503880002', 'Senior Tech Recruiter & People Lead'),
+(4, 1, '3171019999000007', 'HR Recruiter'),
+(5, 1, '3171019999000008', 'System Administrator');
 
 -- 7. Interviewers (Internal IT Technical & HR Leads)
 INSERT INTO `interviewer` (`id_interviewer`, `id_company`, `nama`, `email`, `no_telepon`, `position`) VALUES
 (1, 1, 'Dewi Lestari, M.Psi', 'dewi.recruiter@sireka.com', '081233445566', 'Senior Tech Recruiter & People Lead'),
 (2, 1, 'Bambang Triatmojo, S.Kom', 'bambang.techlead@solusiteknologi.co.id', '081288776655', 'Lead Backend Architect'),
 (3, 1, 'Farhan Hakim, M.Sc', 'farhan.ai@solusiteknologi.co.id', '081399887766', 'Head of Data & AI Engineering'),
-(4, 1, 'Rina Anggraini, S.T.', 'rina.cloud@solusiteknologi.co.id', '081311223344', 'Principal Cloud & DevOps Specialist');
+(4, 1, 'Rina Anggraini, S.T.', 'rina.cloud@solusiteknologi.co.id', '081311223344', 'Principal Cloud & DevOps Specialist'),
+(5, 1, 'Interviewer SIREKA', 'interviewer@gmail.com', '081200000007', 'Technical Interviewer');
 
 -- 8. User Skills (Junction Table: user_skill)
 INSERT INTO `user_skill` (`nik`, `id_skill`, `level`) VALUES

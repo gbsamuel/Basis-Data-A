@@ -120,15 +120,21 @@ function requireLogin() {
     }
 }
 
+/**
+ * Halaman pertama sesuai role:
+ * admin -> Pengaturan Sistem, hr -> Dashboard HR, user -> Dashboard Pelamar
+ */
+function homeUrl() {
+    if (hasRole('admin')) return BASE_URL . '/admin/settings.php';
+    if (hasRole('hr')) return BASE_URL . '/admin/dashboard.php';
+    return BASE_URL . '/user/dashboard.php';
+}
+
 function requireRole($roles) {
     requireLogin();
     if (!hasRole($roles)) {
         setFlash('danger', 'Anda tidak memiliki hak akses ke halaman tersebut.');
-        if (hasRole('admin') || hasRole('interviewer')) {
-            header('Location: ' . BASE_URL . '/admin/dashboard.php');
-        } else {
-            header('Location: ' . BASE_URL . '/user/dashboard.php');
-        }
+        header('Location: ' . homeUrl());
         exit;
     }
 }

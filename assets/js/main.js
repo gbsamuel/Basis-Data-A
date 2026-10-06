@@ -3,13 +3,70 @@
  */
 
 document.addEventListener('DOMContentLoaded', function() {
-    // 1. Mobile Sidebar Toggle
+    // 1. Sidebar muncul/tersembunyi.
+    //    - Saat terbuka, isi halaman ikut bergeser ke kanan (class "sidebar-open" di body).
+    //    - Tetap terbuka saat pindah halaman lewat menu sidebar.
+    //    - Tertutup jika tombol menu / X diklik, atau area lain di luar sidebar diklik.
     const sidebarToggle = document.getElementById('sidebarToggle');
-    const sidebar = document.querySelector('.sidebar');
+    const sidebarClose = document.getElementById('sidebarClose');
+    const sidebar = document.getElementById('sidebar');
+
+    function openSidebar() {
+        sidebar.classList.add('show');
+        document.body.classList.add('sidebar-open');
+        try { localStorage.setItem('sidebarOpen', '1'); } catch (e) {}   // ingat bahwa sidebar sedang terbuka
+    }
+
+    function closeSidebar() {
+        sidebar.classList.remove('show');
+        document.body.classList.remove('sidebar-open');
+        try { localStorage.removeItem('sidebarOpen'); } catch (e) {}
+    }
+
     if (sidebarToggle && sidebar) {
+        // Saat halaman baru dibuka: jika sebelumnya terbuka, langsung tampilkan tanpa animasi
+        let wasOpen = false;
+        try { wasOpen = localStorage.getItem('sidebarOpen') === '1'; } catch (e) {}
+        if (wasOpen) {
+            document.body.classList.add('no-sidebar-anim');
+            openSidebar();
+            setTimeout(function() { document.body.classList.remove('no-sidebar-anim'); }, 50);
+        }
+
+        // Tombol menu di header: buka jika tertutup, tutup jika terbuka
         sidebarToggle.addEventListener('click', function() {
-            sidebar.classList.toggle('d-none');
+            if (sidebar.classList.contains('show')) {
+                closeSidebar();
+            } else {
+                openSidebar();
+            }
         });
+
+        if (sidebarClose) sidebarClose.addEventListener('click', closeSidebar);
+
+        // Klik di luar sidebar (selain tombol menu) hanya menutup sidebar.
+        // Klik itu sengaja "ditahan" supaya tidak ikut membuka dropdown / menekan tombol,
+        // karena saat sidebar menutup, isi halaman bergeser dan dropdown yang terbuka jadi berkedip.
+        let tahanKlikBerikutnya = false;
+
+        document.addEventListener('mousedown', function(e) {
+            const klikDiSidebar = sidebar.contains(e.target);
+            const klikTombolMenu = sidebarToggle.contains(e.target);
+            if (sidebar.classList.contains('show') && !klikDiSidebar && !klikTombolMenu) {
+                e.preventDefault();          // cegah dropdown terbuka / input mendapat fokus
+                e.stopPropagation();
+                tahanKlikBerikutnya = true;  // klik yang menyusul juga diabaikan
+                closeSidebar();
+            }
+        }, true);
+
+        document.addEventListener('click', function(e) {
+            if (tahanKlikBerikutnya) {
+                e.preventDefault();
+                e.stopPropagation();
+                tahanKlikBerikutnya = false;
+            }
+        }, true);
     }
 
     // 2. Initialize Bootstrap Tooltips

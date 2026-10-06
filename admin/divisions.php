@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
-requireRole(['admin', 'interviewer']);
+requireRole('admin'); // khusus admin (data perusahaan dan sistem)
 
 $pdo = getDB();
 $pageTitle = 'Manajemen Divisi IT - SIREKA Admin';
@@ -45,10 +45,22 @@ $divisions = $pdo->query("
            COUNT(j.id_job) as total_jobs
     FROM division d
     JOIN company c ON d.id_company = c.id_company
+    LEFT JOIN job j ON j.id_division = d.id_division
     WHERE d.id_company = 1
     GROUP BY d.id_division 
     ORDER BY d.nama_divisi ASC
 ")->fetchAll();
+
+// Semua lowongan, dikelompokkan per divisi (ditampilkan saat tombol "N Lowongan" diklik)
+$jobsByDivision = [];
+$allJobs = $pdo->query("
+    SELECT id_job, id_division, nama_job, job_type, location, deadline, status
+    FROM job
+    ORDER BY created_at DESC
+")->fetchAll();
+foreach ($allJobs as $job) {
+    $jobsByDivision[$job['id_division']][] = $job;
+}
 
 require_once __DIR__ . '/../includes/header.php';
 ?>
@@ -59,7 +71,7 @@ require_once __DIR__ . '/../includes/header.php';
     <main class="main-content">
         <header class="top-navbar d-flex justify-content-between align-items-center">
             <div class="d-flex align-items-center gap-3">
-                <button class="btn btn-outline-secondary d-md-none" id="sidebarToggle">
+                <button class="btn btn-outline-secondary" id="sidebarToggle" title="Tampilkan menu">
                     <i class="bi bi-list"></i>
                 </button>
                 <div>
@@ -70,6 +82,7 @@ require_once __DIR__ . '/../includes/header.php';
             <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#divisionModal" onclick="resetForm()">
                 <i class="bi bi-plus-circle me-1"></i> Tambah Divisi IT
             </button>
+        <?php require __DIR__ . '/../includes/topbar_user.php'; ?>
         </header>
 
         <div class="p-4">
@@ -106,9 +119,12 @@ require_once __DIR__ . '/../includes/header.php';
                                             </small>
                                         </td>
                                         <td class="text-center">
-                                            <a href="<?= BASE_URL ?>/admin/jobs.php?division_id=<?= $d['id_division'] ?>" class="badge bg-primary-light text-primary text-decoration-none px-3 py-2">
+                                            <!-- Klik untuk membuka/menutup daftar lowongan divisi ini di bawah baris -->
+                                            <button type="button" class="badge bg-primary-light text-primary border-0 px-3 py-2"
+                                                    onclick="toggleJobs(<?= $d['id_division'] ?>)">
                                                 <i class="bi bi-briefcase me-1"></i> <?= $d['total_jobs'] ?> Lowongan
-                                            </a>
+                                                <i class="bi bi-chevron-down ms-1" id="jobsIcon<?= $d['id_division'] ?>"></i>
+                                            </button>
                                         </td>
                                         <td class="text-end">
                                             <div class="btn-group btn-group-sm">
@@ -122,6 +138,29 @@ require_once __DIR__ . '/../includes/header.php';
                                                     <i class="bi bi-trash"></i>
                                                 </a>
                                             </div>
+                                        </td>
+                                    </tr>
+
+                                    <!-- Baris tambahan berisi daftar lowongan divisi ini (awalnya disembunyikan) -->
+                                    <tr id="jobsRow<?= $d['id_division'] ?>" class="d-none">
+                                        <td colspan="4" class="bg-light px-4 py-3">
+                                            <?php if (empty($jobsByDivision[$d['id_division']])): ?>
+                                                <span class="text-muted small">Belum ada lowongan di divisi ini.</span>
+                                            <?php else: ?>
+                                                <?php foreach ($jobsByDivision[$d['id_division']] as $job): ?>
+                                                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 py-2 border-bottom">
+                                                        <div>
+                                                            <div class="fw-semibold text-dark"><?= htmlspecialchars($job['nama_job']) ?></div>
+                                                            <small class="text-muted">
+                                                                <?= htmlspecialchars($job['job_type']) ?> &bull;
+                                                                <?= htmlspecialchars($job['location']) ?> &bull;
+                                                                Batas: <?= formatTanggalIndo($job['deadline']) ?>
+                                                            </small>
+                                                        </div>
+                                                        <span class="badge <?= $job['status'] === 'Open' ? 'bg-success' : 'bg-secondary' ?>"><?= $job['status'] ?></span>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            <?php endif; ?>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -182,6 +221,16 @@ function editDivision(d) {
     var modal = new bootstrap.Modal(document.getElementById('divisionModal'));
     modal.show();
 }
+</script>
+
+<script>
+    // Buka/tutup baris daftar lowongan di bawah divisi yang diklik
+    function toggleJobs(idDivision) {
+        const row = document.getElementById('jobsRow' + idDivision);
+        const icon = document.getElementById('jobsIcon' + idDivision);
+        row.classList.toggle('d-none');
+        icon.className = row.classList.contains('d-none') ? 'bi bi-chevron-down ms-1' : 'bi bi-chevron-up ms-1';
+    }
 </script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

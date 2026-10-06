@@ -1,12 +1,13 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
-requireRole('user');
+requireRole(['user', 'hr']); // pelamar melihat LoA miliknya, HR boleh mencetak LoA semua kandidat
 
 $pdo = getDB();
 $user = currentUser();
 $nik = $user['nik'];
 
 $appId = isset($_GET['app_id']) ? (int)$_GET['app_id'] : 0;
+$isHr = hasRole('hr');
 
 // Fetch LOA
 if ($appId > 0) {
@@ -21,9 +22,10 @@ if ($appId > 0) {
         JOIN division d ON j.id_division = d.id_division
         JOIN company c ON d.id_company = c.id_company
         JOIN user_all u ON a.nik = u.nik
-        WHERE l.id_application = ? AND a.nik = ?
+        WHERE l.id_application = ? AND (a.nik = ? OR ? = 1)
     ");
-    $stmt->execute([$appId, $nik]);
+    // Pelamar hanya bisa membuka LoA miliknya sendiri, HR bisa membuka semua LoA
+    $stmt->execute([$appId, $nik, $isHr ? 1 : 0]);
 } else {
     // Find latest LOA for this user
     $stmt = $pdo->prepare("
@@ -53,8 +55,8 @@ require_once __DIR__ . '/../includes/header.php';
 <div class="container py-4">
     <!-- Action Controls (No Print) -->
     <div class="no-print d-flex justify-content-between align-items-center mb-4">
-        <a href="<?= BASE_URL ?>/user/dashboard.php" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left me-1"></i> Kembali ke Dashboard
+        <a href="<?= $isHr ? BASE_URL . '/admin/loa_manage.php' : BASE_URL . '/user/dashboard.php' ?>" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> <?= $isHr ? 'Kembali ke Daftar LoA' : 'Kembali ke Dashboard' ?>
         </a>
         <div class="d-flex gap-2">
             <?php if ($loa): ?>

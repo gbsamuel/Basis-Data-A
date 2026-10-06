@@ -40,6 +40,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_update_profile
     }
 }
 
+// Handle upload / ganti foto profil
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_upload_photo'])) {
+    $file = $_FILES['profile_photo'] ?? null;
+    $allowedExt = ['jpg', 'jpeg', 'png', 'webp'];
+    $maxSize = 2 * 1024 * 1024; // 2 MB
+
+    if (!$file || $file['error'] !== UPLOAD_ERR_OK) {
+        setFlash('danger', 'Pilih file foto terlebih dahulu.');
+    } else {
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+
+        if (!in_array($ext, $allowedExt)) {
+            setFlash('danger', 'Format foto harus JPG, PNG, atau WEBP.');
+        } elseif ($file['size'] > $maxSize) {
+            setFlash('danger', 'Ukuran foto maksimal 2 MB.');
+        } elseif (getimagesize($file['tmp_name']) === false) {
+            setFlash('danger', 'File yang diunggah bukan gambar.');
+        } else {
+            // Nama file dibuat unik: NIK + waktu upload
+            $newName = $nik . '_' . time() . '.' . $ext;
+            $uploadDir = __DIR__ . '/../uploads/profiles/';
+
+            if (move_uploaded_file($file['tmp_name'], $uploadDir . $newName)) {
+                // Hapus foto lama agar folder tidak penuh
+                if (!empty($user['profile_photo']) && file_exists($uploadDir . $user['profile_photo'])) {
+                    unlink($uploadDir . $user['profile_photo']);
+                }
+
+                // Simpan nama file ke database
+                $stmt = $pdo->prepare("UPDATE user_all SET profile_photo = ? WHERE nik = ?");
+                $stmt->execute([$newName, $nik]);
+
+                // Perbarui data user di session supaya foto langsung tampil
+                $_SESSION['user']['profile_photo'] = $newName;
+                setFlash('success', 'Foto profil berhasil diperbarui.');
+            } else {
+                setFlash('danger', 'Foto gagal diunggah. Coba lagi.');
+            }
+        }
+    }
+    header('Location: ' . BASE_URL . '/user/profile.php');
+    exit;
+}
+
 // Handle Add Skill
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_add_skill'])) {
     $skillId = (int)($_POST['id_skill'] ?? 0);
@@ -119,7 +163,7 @@ require_once __DIR__ . '/../includes/header.php';
     <main class="main-content">
         <header class="top-navbar d-flex justify-content-between align-items-center">
             <div class="d-flex align-items-center gap-3">
-                <button class="btn btn-outline-secondary d-md-none" id="sidebarToggle">
+                <button class="btn btn-outline-secondary" id="sidebarToggle" title="Tampilkan menu">
                     <i class="bi bi-list"></i>
                 </button>
                 <div>
@@ -127,6 +171,7 @@ require_once __DIR__ . '/../includes/header.php';
                     <small class="text-muted">Kelola data pribadi dan katalog keahlian untuk meningkatkan Match Score</small>
                 </div>
             </div>
+        <?php require __DIR__ . '/../includes/topbar_user.php'; ?>
         </header>
 
         <div class="p-4">
@@ -135,6 +180,52 @@ require_once __DIR__ . '/../includes/header.php';
             <div class="row g-4">
                 <!-- Biodata Form -->
                 <div class="col-lg-7">
+                    <!-- Foto Profil -->
+                    <div class="card-custom p-4 border-0 shadow-sm mb-4">
+                        <h5 class="fw-bold mb-3 border-bottom pb-2">
+                            <i class="bi bi-camera-fill text-primary me-2"></i> Foto Profil
+                        </h5>
+                        <form method="POST" action="<?= BASE_URL ?>/user/profile.php" enctype="multipart/form-data"
+                              class="d-flex flex-column flex-sm-row align-items-center gap-4">
+                            <input type="hidden" name="action_upload_photo" value="1">
+
+                            <!-- Tampilkan foto jika ada, jika belum ada tampilkan huruf awal nama -->
+                            <?php if (!empty($user['profile_photo'])): ?>
+                                <img src="<?= BASE_URL ?>/uploads/profiles/<?= htmlspecialchars($user['profile_photo']) ?>"
+                                     id="photoPreview" class="profile-photo-lg" alt="Foto profil">
+                            <?php else: ?>
+                                <img src="" id="photoPreview" class="profile-photo-lg d-none" alt="Foto profil">
+                                <div id="photoInitial" class="profile-photo-lg profile-photo-initial">
+                                    <?= strtoupper(substr($user['nama'] ?? 'U', 0, 1)) ?>
+                                </div>
+                            <?php endif; ?>
+
+                            <div class="flex-grow-1 w-100">
+                                <!-- Tampilan biasa: nama, email, dan tombol untuk membuka form -->
+                                <div id="photoInfo">
+                                    <h6 class="fw-bold mb-0"><?= htmlspecialchars($user['nama']) ?></h6>
+                                    <small class="text-muted d-block mb-3"><?= htmlspecialchars($user['email']) ?></small>
+                                    <button type="button" id="photoEditBtn" class="btn btn-outline-primary btn-sm">
+                                        <i class="bi bi-camera me-1"></i>
+                                        <?= empty($user['profile_photo']) ? 'Tambah Foto' : 'Ganti Foto' ?>
+                                    </button>
+                                </div>
+
+                                <!-- Form upload, disembunyikan (d-none) sampai tombol di atas diklik -->
+                                <div id="photoForm" class="d-none">
+                                    <label class="form-label small fw-semibold">Pilih foto baru</label>
+                                    <input type="file" name="profile_photo" id="photoInput" class="form-control mb-2"
+                                           accept=".jpg,.jpeg,.png,.webp" required>
+                                    <small class="text-muted d-block mb-2">Format JPG, PNG, atau WEBP. Maksimal 2 MB.</small>
+                                    <button type="submit" class="btn btn-primary btn-sm">
+                                        <i class="bi bi-upload me-1"></i> Simpan Foto
+                                    </button>
+                                    <button type="button" id="photoCancelBtn" class="btn btn-light btn-sm">Batal</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
                     <div class="card-custom p-4 border-0 shadow-sm mb-4">
                         <h5 class="fw-bold mb-3 border-bottom pb-2">
                             <i class="bi bi-person-lines-fill text-primary me-2"></i> Biodata Pribadi
@@ -295,5 +386,31 @@ require_once __DIR__ . '/../includes/header.php';
         </div>
     </main>
 </div>
+
+<script>
+    // Tombol "Ganti Foto": sembunyikan info, tampilkan form upload
+    document.getElementById('photoEditBtn').addEventListener('click', function () {
+        document.getElementById('photoInfo').classList.add('d-none');
+        document.getElementById('photoForm').classList.remove('d-none');
+    });
+
+    // Tombol "Batal": kembalikan ke tampilan biasa (muat ulang halaman agar pratinjau ikut kembali)
+    document.getElementById('photoCancelBtn').addEventListener('click', function () {
+        window.location.reload();
+    });
+
+    // Pratinjau foto sebelum disimpan
+    document.getElementById('photoInput').addEventListener('change', function () {
+        const file = this.files[0];
+        if (!file) return;
+
+        const preview = document.getElementById('photoPreview');
+        preview.src = URL.createObjectURL(file);   // buat alamat sementara untuk file yang dipilih
+        preview.classList.remove('d-none');
+
+        const initial = document.getElementById('photoInitial');
+        if (initial) initial.classList.add('d-none');
+    });
+</script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

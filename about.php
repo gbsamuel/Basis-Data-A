@@ -8,15 +8,20 @@ $activePage = 'about';
 // Get company profile
 $company = $pdo->query("SELECT * FROM company WHERE id_company = 1 LIMIT 1")->fetch();
 
-// Get internal IT divisions with open job counts
+// Semua divisi di perusahaan (bukan hanya yang sedang membuka lowongan)
 $divisions = $pdo->query("
-    SELECT d.*, COUNT(j.id_job) AS total_jobs
-    FROM division d
-    LEFT JOIN job j ON d.id_division = j.id_division AND j.status = 'Open'
-    WHERE d.id_company = 1
-    GROUP BY d.id_division
-    ORDER BY d.nama_divisi ASC
+    SELECT * FROM division
+    WHERE id_company = 1
+    ORDER BY nama_divisi ASC
 ")->fetchAll();
+
+// Angka untuk section "SIREKA by the Numbers", diambil langsung dari database
+$totalOpenJobs  = $pdo->query("SELECT COUNT(*) FROM job WHERE status = 'Open'")->fetchColumn();
+$totalDivisions = $pdo->query("SELECT COUNT(*) FROM division WHERE id_company = 1")->fetchColumn();
+$totalApplicants = $pdo->query("SELECT COUNT(*) FROM user_all WHERE role = 'user'")->fetchColumn();
+
+// Data tim dan galeri (placeholder, ubah di includes/about_data.php)
+require_once __DIR__ . '/includes/about_data.php';
 
 require_once __DIR__ . '/includes/header.php';
 require_once __DIR__ . '/includes/navbar.php';
@@ -24,6 +29,9 @@ require_once __DIR__ . '/includes/navbar.php';
 
 <!-- Hero Section -->
 <div class="bg-corporate-blue py-5 text-white position-relative overflow-hidden">
+    <!-- Foto gedung yang sama dengan hero di halaman Home, ditimpa lapisan biru -->
+    <div class="hero-building-bg" aria-hidden="true"></div>
+    <div class="hero-building-overlay" aria-hidden="true"></div>
     <div class="container py-4 position-relative" style="z-index: 2;">
         <div class="row align-items-center g-4">
             <div class="col-lg-8">
@@ -58,9 +66,60 @@ require_once __DIR__ . '/includes/navbar.php';
     </div>
 </div>
 
+<!-- About Us: judul dan tagline di kiri, foto di kanan -->
+<div class="container pt-5">
+    <div class="row align-items-center g-5 mb-5">
+        <div class="col-lg-6">
+            <span class="section-label">Tentang Kami</span>
+            <h2 class="section-title">Membangun Teknologi untuk <span class="text-accent">Kemajuan Indonesia</span></h2>
+            <p class="section-subtitle ms-0">
+                Tim engineer, desainer, dan spesialis data yang membantu bisnis berkembang melalui perangkat lunak yang andal.
+            </p>
+        </div>
+        <div class="col-lg-6">
+            <img src="<?= htmlspecialchars(aboutImageUrl($aboutPhotos['intro'])) ?>" class="about-rounded-img" alt="Tim perusahaan">
+        </div>
+    </div>
+
+    <!-- Our Mission: foto di kiri, teks di kanan -->
+    <div class="row align-items-center g-5 mb-5">
+        <div class="col-lg-6 order-2 order-lg-1">
+            <img src="<?= htmlspecialchars(aboutImageUrl($aboutPhotos['mission'])) ?>" class="about-rounded-img" alt="Misi perusahaan">
+        </div>
+        <div class="col-lg-6 order-1 order-lg-2">
+            <h3 class="fw-bold mb-3">Misi Kami: <span class="text-primary">Tumbuh Bersama Talenta dan Perusahaan</span></h3>
+            <p class="text-muted">
+                Kami percaya produk yang hebat lahir dari orang-orang yang hebat. Misi kami adalah membuka karier
+                yang bermakna di bidang teknologi dan membuat proses rekrutmen yang adil, transparan, serta mudah
+                diikuti oleh setiap kandidat. Hal ini mendukung SDGs 8: pekerjaan layak dan pertumbuhan ekonomi.
+            </p>
+        </div>
+    </div>
+
+    <!-- Our Story: teks di kiri, foto di kanan -->
+    <div class="row align-items-center g-5">
+        <div class="col-lg-6">
+            <h3 class="fw-bold mb-3">Cerita Kami</h3>
+            <p class="text-muted">
+                Semua berawal dari sekelompok kecil developer yang ingin membuat perangkat lunak untuk menyelesaikan
+                masalah nyata bisnis di Indonesia. Dari satu kantor kecil di Jakarta, kami tumbuh menjadi perusahaan
+                yang menghadirkan solusi cloud, data, dan AI untuk klien di seluruh Indonesia.
+            </p>
+            <p class="text-muted mb-0">
+                Seiring tim yang terus bertambah, kami sadar bahwa merekrut orang yang tepat sama pentingnya dengan
+                membangun produk yang tepat. Karena itulah kami membuat SIREKA, portal rekrutmen tempat setiap pelamar
+                dapat memantau proses seleksinya, mulai dari lamaran pertama hingga penawaran kerja.
+            </p>
+        </div>
+        <div class="col-lg-6">
+            <img src="<?= htmlspecialchars(aboutImageUrl($aboutPhotos['story'])) ?>" class="about-rounded-img" alt="Cerita perusahaan">
+        </div>
+    </div>
+</div>
+
 <!-- Values & Tech Culture -->
 <div class="container py-5">
-    <div class="text-center mb-5">
+    <div class="text-center mb-5" id="values">
         <span class="text-primary fw-bold text-uppercase small tracking-wide">Our Engineering Values</span>
         <h2 class="fw-bold text-dark mt-1">Mengapa Membangun Karier Bersama Kami?</h2>
         <p class="text-muted" style="max-width: 600px; margin: 0 auto;">
@@ -115,35 +174,151 @@ require_once __DIR__ . '/includes/navbar.php';
         </div>
     </div>
 
-    <!-- Divisi IT Kami -->
-    <div class="bg-light rounded-4 p-4 p-md-5 border mb-5">
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
-            <div>
-                <h3 class="fw-bold text-dark mb-1">Divisi & Departemen Teknologi</h3>
-                <p class="text-muted mb-0">Pilih divisi yang sesuai dengan minat dan spesialisasi keahlian teknis Anda.</p>
-            </div>
-            <a href="<?= BASE_URL ?>/jobs.php" class="btn btn-outline-primary fw-semibold">
-                Lihat Semua Lowongan <i class="bi bi-arrow-right ms-1"></i>
-            </a>
+    <!-- Tim Kami: kartu foto bulat, posisinya naik-turun (selang-seling) -->
+    <div class="team-section mb-5" id="team">
+        <div class="text-center mb-5">
+            <span class="section-label">Our Team</span>
+            <!-- Kata kedua dibungkus span text-accent agar berwarna biru -->
+            <h2 class="section-title">Meet Our <span class="text-accent">Professional Team</span></h2>
+            <p class="section-subtitle">
+                Orang-orang di balik SIREKA yang merancang dan membangun sistem ini.
+            </p>
         </div>
 
-        <div class="row g-3">
-            <?php foreach ($divisions as $div): ?>
-                <div class="col-md-6 col-lg-4">
-                    <div class="card-custom h-100 p-3 bg-white d-flex flex-column">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <h6 class="fw-bold text-dark mb-0"><?= htmlspecialchars($div['nama_divisi']) ?></h6>
-                            <span class="badge bg-primary-light text-primary"><?= $div['total_jobs'] ?> Posisi</span>
+        <div class="row g-4 justify-content-center">
+            <?php foreach ($teamMembers as $i => $member): ?>
+                <!-- Kartu urutan genap (ke-2 dan ke-4) diberi class team-card-offset agar posisinya turun -->
+                <div class="col-6 col-md-4 col-lg">
+                    <div class="team-card <?= $i % 2 === 1 ? 'team-card-offset' : '' ?>">
+                        <div class="team-photo">
+                            <img src="<?= htmlspecialchars(aboutImageUrl($member['foto'])) ?>"
+                                 alt="Foto <?= htmlspecialchars($member['nama']) ?>">
                         </div>
-                        <p class="text-muted small flex-grow-1 mb-3">
-                            <?= htmlspecialchars($div['deskripsi'] ?? 'Divisi rekayasa dan operasional teknologi internal.') ?>
-                        </p>
-                        <a href="<?= BASE_URL ?>/jobs.php?division=<?= $div['id_division'] ?>" class="btn btn-sm btn-light text-primary fw-semibold w-100">
-                            Lihat Posisi di Divisi Ini
-                        </a>
+                        <h6 class="fw-bold text-dark mb-0"><?= htmlspecialchars($member['nama']) ?></h6>
+                        <div class="text-primary small fw-semibold mb-2"><?= htmlspecialchars($member['peran']) ?></div>
+                        <p class="text-muted small mb-2"><?= htmlspecialchars($member['bio']) ?></p>
+                        <div class="team-social">
+                            <a href="<?= htmlspecialchars($member['instagram']) ?>" title="Instagram"><i class="bi bi-instagram"></i></a>
+                            <a href="<?= htmlspecialchars($member['linkedin']) ?>" title="LinkedIn"><i class="bi bi-linkedin"></i></a>
+                            <a href="<?= htmlspecialchars($member['github']) ?>" title="GitHub"><i class="bi bi-github"></i></a>
+                        </div>
                     </div>
                 </div>
             <?php endforeach; ?>
+        </div>
+    </div>
+
+    <!-- Galeri dinamis: kartu yang disorot (hover) atau diklik akan melebar -->
+    <div class="mb-5">
+        <div class="text-center mb-4">
+            <span class="text-primary fw-bold text-uppercase small">Galeri</span>
+            <h2 class="fw-bold text-dark mt-1">Suasana Kerja Kami</h2>
+        </div>
+
+        <div class="photo-gallery" id="photoGallery">
+            <?php foreach ($galleryItems as $i => $item): ?>
+                <!-- Kartu pertama langsung aktif (lebar) saat halaman dibuka -->
+                <div class="gallery-card <?= $i === 0 ? 'active' : '' ?>"
+                     style="background-image: url('<?= htmlspecialchars(aboutImageUrl($item['foto'])) ?>');">
+                    <div class="gallery-caption">
+                        <h5 class="text-white fw-bold mb-1"><?= htmlspecialchars($item['judul']) ?></h5>
+                        <p class="mb-0 small"><?= htmlspecialchars($item['keterangan']) ?></p>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+
+    <!-- Divisi IT Kami -->
+    <div class="division-section mb-5">
+        <div class="d-flex justify-content-between align-items-end mb-4 gap-3">
+            <div>
+                <h3 class="fw-bold text-white mb-1">Divisi di Perusahaan Kami</h3>
+                <p class="mb-0 text-light opacity-75">Kenali bidang pekerjaan yang ada di setiap divisi.</p>
+            </div>
+            <!-- Tombol geser kiri dan kanan -->
+            <div class="d-flex gap-2">
+                <button type="button" class="division-nav" id="divisionPrev" title="Geser ke kiri"><i class="bi bi-chevron-left"></i></button>
+                <button type="button" class="division-nav" id="divisionNext" title="Geser ke kanan"><i class="bi bi-chevron-right"></i></button>
+            </div>
+        </div>
+
+        <!-- Satu baris kartu yang bisa digeser ke samping -->
+        <div class="division-scroll" id="divisionScroll">
+            <?php foreach ($divisions as $div): ?>
+                <div class="division-card">
+                    <div class="division-icon"><i class="bi bi-diagram-3-fill"></i></div>
+                    <h6 class="fw-bold text-white mb-2"><?= htmlspecialchars($div['nama_divisi']) ?></h6>
+                    <p class="small mb-0">
+                        <?= htmlspecialchars($div['deskripsi'] ?? 'Divisi rekayasa dan operasional teknologi internal.') ?>
+                    </p>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+
+    <!-- SIREKA by the Numbers: angka diambil dari database -->
+    <div class="text-center mb-4">
+        <span class="section-label">Pencapaian Kami</span>
+        <h2 class="section-title">SIREKA <span class="text-accent">dalam Angka</span></h2>
+    </div>
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="number-card">
+                <div class="number-icon"><i class="bi bi-briefcase-fill"></i></div>
+                <div class="number-value"><?= (int)$totalOpenJobs ?></div>
+                <div class="text-muted mb-3">Lowongan Dibuka</div>
+                <a href="<?= BASE_URL ?>/jobs.php" class="fw-semibold">Selengkapnya <i class="bi bi-chevron-right small"></i></a>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="number-card">
+                <div class="number-icon"><i class="bi bi-diagram-3-fill"></i></div>
+                <div class="number-value"><?= (int)$totalDivisions ?></div>
+                <div class="text-muted mb-3">Divisi Teknologi</div>
+                <a href="<?= BASE_URL ?>/jobs.php" class="fw-semibold">Selengkapnya <i class="bi bi-chevron-right small"></i></a>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="number-card">
+                <div class="number-icon"><i class="bi bi-people-fill"></i></div>
+                <div class="number-value"><?= (int)$totalApplicants ?></div>
+                <div class="text-muted mb-3">Pelamar Terdaftar</div>
+                <a href="<?= BASE_URL ?>/auth/register.php" class="fw-semibold">Selengkapnya <i class="bi bi-chevron-right small"></i></a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel penghargaan (contoh, silakan ganti sesuai kebutuhan) -->
+    <div class="awards-panel mb-5">
+        <div class="row align-items-center g-4">
+            <div class="col-lg-4 text-center text-lg-start">
+                <h4 class="fw-bold mb-1">Diakui sebagai <span class="text-primary">Tempat Kerja Terbaik</span></h4>
+                <p class="text-muted small mb-0">Penghargaan dan sertifikasi yang telah kami terima.</p>
+            </div>
+            <div class="col-lg-8">
+                <div class="d-flex flex-wrap justify-content-center justify-content-lg-end gap-3">
+                    <div class="award-badge"><i class="bi bi-trophy-fill"></i><span>Perusahaan Teknologi Terbaik</span></div>
+                    <div class="award-badge"><i class="bi bi-award-fill"></i><span>Tempat Kerja Unggulan</span></div>
+                    <div class="award-badge"><i class="bi bi-patch-check-fill"></i><span>ISO 27001</span></div>
+                    <div class="award-badge"><i class="bi bi-star-fill"></i><span>Budaya Kerja Positif</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Life at SIREKA: foto besar di kiri, panel biru di kanan -->
+    <div class="life-section mb-5">
+        <div class="life-photo" style="background-image: url('<?= htmlspecialchars(aboutImageUrl($aboutPhotos['life'])) ?>');"></div>
+        <div class="life-panel">
+            <h2 class="life-title">Kehidupan di SIREKA</h2>
+            <p class="mb-4">
+                Budaya kerja kami dibangun di atas kolaborasi, rasa ingin tahu, dan saling menghargai. Setiap anggota
+                tim didorong untuk berbagi ide, terus belajar, dan berkembang bersama perusahaan.
+            </p>
+            <a href="#values" class="life-link">Nilai dan Budaya Kami <i class="bi bi-chevron-right"></i></a>
+            <a href="#team" class="life-link">Meet Our Team <i class="bi bi-chevron-right"></i></a>
+            <a href="<?= BASE_URL ?>/jobs.php" class="life-link">Bergabung dengan Tim Kami <i class="bi bi-chevron-right"></i></a>
         </div>
     </div>
 
@@ -177,5 +352,32 @@ require_once __DIR__ . '/includes/navbar.php';
         </div>
     </div>
 </div>
+
+<script>
+    // Galeri dinamis: kartu yang disorot mouse (atau diklik di HP) menjadi lebar
+    const galleryCards = document.querySelectorAll('#photoGallery .gallery-card');
+
+    function activateCard(card) {
+        // Hapus class active dari semua kartu, lalu pasang di kartu yang dipilih
+        galleryCards.forEach(function (c) {
+            c.classList.remove('active');
+        });
+        card.classList.add('active');
+    }
+
+    galleryCards.forEach(function (card) {
+        card.addEventListener('mouseenter', function () { activateCard(card); });
+        card.addEventListener('click', function () { activateCard(card); });
+    });
+
+    // Kartu divisi: tombol panah menggeser baris sejauh 300px ke kiri/kanan
+    const divisionScroll = document.getElementById('divisionScroll');
+    document.getElementById('divisionPrev').addEventListener('click', function () {
+        divisionScroll.scrollBy({ left: -300, behavior: 'smooth' });
+    });
+    document.getElementById('divisionNext').addEventListener('click', function () {
+        divisionScroll.scrollBy({ left: 300, behavior: 'smooth' });
+    });
+</script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

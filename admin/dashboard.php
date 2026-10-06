@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
-requireRole(['admin', 'interviewer']);
+requireRole('hr'); // dashboard rekrutmen khusus HR (admin langsung ke Pengaturan Sistem)
 
 $pdo = getDB();
 $user = currentUser();
@@ -71,7 +71,7 @@ require_once __DIR__ . '/../includes/header.php';
     <main class="main-content">
         <header class="top-navbar d-flex justify-content-between align-items-center">
             <div class="d-flex align-items-center gap-3">
-                <button class="btn btn-outline-secondary d-md-none" id="sidebarToggle">
+                <button class="btn btn-outline-secondary" id="sidebarToggle" title="Tampilkan menu">
                     <i class="bi bi-list"></i>
                 </button>
                 <div>
@@ -79,11 +79,15 @@ require_once __DIR__ . '/../includes/header.php';
                     <small class="text-muted">SIREKA Central Recruitment & Talent Management System</small>
                 </div>
             </div>
+            <!-- Tombol proses rekrutmen hanya untuk HR; admin hanya melihat ringkasan -->
+            <?php if (hasRole('hr')): ?>
             <div class="d-flex align-items-center gap-2">
                 <a href="<?= BASE_URL ?>/admin/jobs.php?action=create" class="btn btn-sm btn-primary">
                     <i class="bi bi-plus-circle me-1"></i> Buka Lowongan Baru
                 </a>
             </div>
+            <?php endif; ?>
+        <?php require __DIR__ . '/../includes/topbar_user.php'; ?>
         </header>
 
         <div class="p-4">
@@ -193,9 +197,11 @@ require_once __DIR__ . '/../includes/header.php';
                         <h5 class="fw-bold mb-0">Lamaran Masuk Terbaru</h5>
                         <small class="text-muted">Daftar kandidat yang membutuhkan peninjauan HR</small>
                     </div>
+                    <?php if (hasRole('hr')): ?>
                     <a href="<?= BASE_URL ?>/admin/applications.php" class="btn btn-sm btn-outline-primary">
                         Semua Lamaran <i class="bi bi-arrow-right"></i>
                     </a>
+                    <?php endif; ?>
                 </div>
 
                 <div class="table-responsive">
@@ -236,9 +242,11 @@ require_once __DIR__ . '/../includes/header.php';
                                         <?= getStatusBadge($app['current_status']) ?>
                                     </td>
                                     <td class="text-end">
+                                        <?php if (hasRole('hr')): ?>
                                         <a href="<?= BASE_URL ?>/admin/application_detail.php?id=<?= $app['id_application'] ?>" class="btn btn-sm btn-primary">
                                             Proses Seleksi
                                         </a>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>

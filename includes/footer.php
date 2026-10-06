@@ -3,7 +3,8 @@ if (!defined('BASE_URL')) {
     require_once __DIR__ . '/../config/database.php';
 }
 ?>
-    <!-- Global Footer (Only shown on non-dashboard or public pages if not inside dashboard-layout) -->
+    <!-- Global Footer (tidak ditampilkan jika halaman mengisi $hideFooter = true, contoh: halaman login) -->
+    <?php if (empty($hideFooter)): ?>
     <footer class="bg-white border-top py-4 mt-auto">
         <div class="container d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
             <div class="d-flex align-items-center gap-2">
@@ -18,12 +19,13 @@ if (!defined('BASE_URL')) {
             </div>
         </div>
     </footer>
+    <?php endif; ?>
 
 
     <!-- Bootstrap 5 Bundle with Popper JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     
     <!-- Custom Main JS -->
-    <script src="<?= BASE_URL ?>/assets/js/main.js"></script>
+    <script src="<?= BASE_URL ?>/assets/js/main.js?v=<?= filemtime(__DIR__ . '/../assets/js/main.js') ?>"></script>
 </body>
 </html>

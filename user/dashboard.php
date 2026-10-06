@@ -67,7 +67,7 @@ require_once __DIR__ . '/../includes/header.php';
         <!-- Top Navbar -->
         <header class="top-navbar d-flex justify-content-between align-items-center">
             <div class="d-flex align-items-center gap-3">
-                <button class="btn btn-outline-secondary d-md-none" id="sidebarToggle">
+                <button class="btn btn-outline-secondary" id="sidebarToggle" title="Tampilkan menu">
                     <i class="bi bi-list"></i>
                 </button>
                 <div>
@@ -75,11 +75,7 @@ require_once __DIR__ . '/../includes/header.php';
                     <small class="text-muted">Selamat datang kembali, <?= htmlspecialchars($user['nama']) ?></small>
                 </div>
             </div>
-            <div class="d-flex align-items-center gap-2">
-                <a href="<?= BASE_URL ?>/user/profile.php" class="btn btn-sm btn-outline-primary">
-                    <i class="bi bi-person me-1"></i> Profil Saya
-                </a>
-            </div>
+        <?php require __DIR__ . '/../includes/topbar_user.php'; ?>
         </header>
 
         <div class="p-4">

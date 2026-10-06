@@ -59,7 +59,7 @@ require_once __DIR__ . '/../includes/header.php';
     <main class="main-content">
         <header class="top-navbar d-flex justify-content-between align-items-center">
             <div class="d-flex align-items-center gap-3">
-                <button class="btn btn-outline-secondary d-md-none" id="sidebarToggle">
+                <button class="btn btn-outline-secondary" id="sidebarToggle" title="Tampilkan menu">
                     <i class="bi bi-list"></i>
                 </button>
                 <div>
@@ -70,6 +70,7 @@ require_once __DIR__ . '/../includes/header.php';
             <a href="<?= BASE_URL ?>/user/profile.php" class="btn btn-sm btn-outline-primary">
                 <i class="bi bi-stars me-1"></i> Update Keahlian Saya
             </a>
+        <?php require __DIR__ . '/../includes/topbar_user.php'; ?>
         </header>
 
         <div class="p-4">

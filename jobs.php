@@ -58,13 +58,13 @@ require_once __DIR__ . '/includes/header.php';
 require_once __DIR__ . '/includes/navbar.php';
 ?>
 
-<div class="bg-corporate-blue py-5 text-white">
-    <div class="container py-3">
-        <span class="badge bg-white text-primary mb-2 px-3 py-2 rounded-pill fw-bold shadow-sm">
-            <i class="bi bi-briefcase-fill me-1"></i> Open Tech Positions
-        </span>
-        <h1 class="fw-bold text-white mb-2">Lowongan Karier Teknologi</h1>
-        <p class="text-light opacity-90 mb-0">Temukan posisi yang cocok untuk keahlian Anda di <?= htmlspecialchars($companyName) ?>.</p>
+<!-- Header halaman: label kecil, judul dua warna, dan subjudul (gaya sama dengan Tim Kami) -->
+<!-- Foto latar bisa diganti di atribut style di bawah (url gambar) -->
+<div class="jobs-hero py-5" style="background-image: url('https://picsum.photos/id/0/1600/600');">
+    <div class="container py-4 text-center">
+        <span class="section-label">Karier</span>
+        <h1 class="section-title">Bergabung dengan <span class="text-accent">Tim Kami</span></h1>
+        <p class="section-subtitle">Kami selalu mencari talenta yang ingin berkembang secara pribadi dan profesional bersama <?= htmlspecialchars($companyName) ?>.</p>
     </div>
 </div>
 

@@ -31,8 +31,8 @@ $user = currentUser();
 
             <div class="d-flex align-items-center gap-2">
                 <?php if ($user): ?>
-                    <?php if (hasRole(['admin', 'interviewer'])): ?>
-                        <a href="<?= BASE_URL ?>/admin/dashboard.php" class="btn btn-primary d-flex align-items-center gap-2">
+                    <?php if (hasRole(['hr', 'admin'])): ?>
+                        <a href="<?= homeUrl() ?>" class="btn btn-primary d-flex align-items-center gap-2">
                             <i class="bi bi-speedometer2"></i>
                             <span>Admin Panel</span>
                         </a>

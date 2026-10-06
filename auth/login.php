@@ -2,11 +2,7 @@
 require_once __DIR__ . '/../config/database.php';
 
 if (isLoggedIn()) {
-    if (hasRole(['admin', 'interviewer'])) {
-        header('Location: ' . BASE_URL . '/admin/dashboard.php');
-    } else {
-        header('Location: ' . BASE_URL . '/user/dashboard.php');
-    }
+    header('Location: ' . homeUrl());
     exit;
 }
 
@@ -14,65 +10,90 @@ $pageTitle = 'Login Portal - SIREKA';
 $redirect = $_GET['redirect'] ?? '';
 
 require_once __DIR__ . '/../includes/header.php';
-require_once __DIR__ . '/../includes/navbar.php';
+// Halaman login tampil penuh tanpa navbar dan footer biasa
+$hideFooter = true;
 ?>
 
-<div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-md-6 col-lg-5">
-            <div class="card-custom p-4 p-md-5 border-0 shadow-sm">
-                <div class="text-center mb-4">
-                    <div class="d-inline-flex align-items-center justify-content-center bg-primary text-white rounded-3 p-2 px-3 mb-2 shadow-sm">
-                        <i class="bi bi-shield-lock-fill fs-3"></i>
-                    </div>
-                    <h3 class="fw-bold mb-1">Masuk ke SIREKA</h3>
-                    <p class="text-muted small">Portal Rekrutmen Terpadu & Pengelolaan Kandidat</p>
-                </div>
-
-                <?php renderFlash(); ?>
-
-                <form method="POST" action="<?= BASE_URL ?>/auth/process_login.php">
-                    <input type="hidden" name="redirect" value="<?= htmlspecialchars($redirect) ?>">
-
-                    <div class="mb-3">
-                        <label for="email" class="form-label small fw-semibold">Alamat Email</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-white"><i class="bi bi-envelope"></i></span>
-                            <input type="email" class="form-control" id="email" name="email" required placeholder="nama@email.com">
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <label for="password" class="form-label small fw-semibold mb-0">Kata Sandi</label>
-                            <a href="#" class="small text-muted" data-bs-toggle="modal" data-bs-target="#forgotModal">Lupa Sandi?</a>
-                        </div>
-                        <div class="input-group">
-                            <span class="input-group-text bg-white"><i class="bi bi-key"></i></span>
-                            <input type="password" class="form-control" id="password" name="password" required placeholder="••••••••">
-                        </div>
-                    </div>
-
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" id="remember" name="remember">
-                        <label class="form-check-label small text-muted" for="remember">
-                            Ingat saya di perangkat ini
-                        </label>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary w-100 py-2.5 fw-bold mb-3 shadow-sm">
-                        <i class="bi bi-box-arrow-in-right me-1"></i> Masuk Sekarang
-                    </button>
-
-                    <div class="text-center small text-muted">
-                        Belum memiliki akun pelamar? 
-                        <a href="<?= BASE_URL ?>/auth/register.php" class="fw-bold text-primary">Daftar Akun Baru</a>
-                    </div>
-                </form>
-            </div>
+<!-- Halaman login: foto gedung (assets/img/building-bg.jpg) memenuhi layar -->
+<div class="login-page">
+    <!-- Header khusus halaman login -->
+    <header class="login-header">
+        <a href="<?= BASE_URL ?>/index.php" class="login-brand">
+            <i class="bi bi-briefcase-fill"></i> SIREKA
+        </a>
+        <div class="d-flex gap-2">
+            <a href="<?= BASE_URL ?>/jobs.php" class="login-pill login-pill-light">
+                <i class="bi bi-search me-1"></i> Lowongan
+            </a>
+            <a href="<?= BASE_URL ?>/auth/register.php" class="login-pill login-pill-dark">Daftar Akun</a>
         </div>
+    </header>
+
+    <!-- Lingkaran tipis di belakang kartu (hiasan) -->
+    <div class="login-circle" aria-hidden="true"></div>
+
+    <!-- Kartu login transparan seperti kaca -->
+    <div class="login-glass">
+        <div class="text-center mb-4">
+            <div class="login-icon-box">
+                <i class="bi bi-box-arrow-in-right"></i>
+            </div>
+            <h4 class="fw-bold mb-1">Sign in with email</h4>
+            <p class="text-muted small mb-0">Portal Rekrutmen Terpadu &amp; Pengelolaan Kandidat IT Nusantara</p>
+        </div>
+
+        <?php renderFlash(); ?>
+
+        <form method="POST" action="<?= BASE_URL ?>/auth/process_login.php">
+            <input type="hidden" name="redirect" value="<?= htmlspecialchars($redirect) ?>">
+
+            <div class="login-input mb-3">
+                <i class="bi bi-envelope"></i>
+                <input type="email" id="email" name="email" required placeholder="Email">
+            </div>
+
+            <div class="login-input mb-2">
+                <i class="bi bi-lock"></i>
+                <input type="password" id="password" name="password" required placeholder="Password">
+                <!-- Tombol mata untuk menampilkan / menyembunyikan password -->
+                <button type="button" class="login-eye" id="togglePassword" title="Tampilkan password">
+                    <i class="bi bi-eye-slash" id="togglePasswordIcon"></i>
+                </button>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-3 small">
+                <div class="form-check mb-0">
+                    <input class="form-check-input" type="checkbox" id="remember" name="remember">
+                    <label class="form-check-label text-muted" for="remember">Ingat saya</label>
+                </div>
+                <a href="#" class="text-dark fw-semibold" data-bs-toggle="modal" data-bs-target="#forgotModal">Forgot password?</a>
+            </div>
+
+            <button type="submit" class="btn login-submit w-100 mb-3">Get Started</button>
+
+            <div class="text-center small text-muted">
+                Belum memiliki akun pelamar?
+                <a href="<?= BASE_URL ?>/auth/register.php" class="fw-bold text-primary">Daftar Akun Baru</a>
+            </div>
+        </form>
     </div>
 </div>
+
+<script>
+    // Tampilkan / sembunyikan password saat ikon mata diklik
+    document.getElementById('togglePassword').addEventListener('click', function () {
+        const input = document.getElementById('password');
+        const icon = document.getElementById('togglePasswordIcon');
+
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.className = 'bi bi-eye';
+        } else {
+            input.type = 'password';
+            icon.className = 'bi bi-eye-slash';
+        }
+    });
+</script>
 
 <!-- Modal Forgot Password -->
 <div class="modal fade" id="forgotModal" tabindex="-1" aria-hidden="true">

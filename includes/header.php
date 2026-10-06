@@ -21,7 +21,8 @@ $pageTitle = $pageTitle ?? 'SIREKA - Sistem Informasi Rekrutmen & Kandidat';
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     
     <!-- Custom Design System CSS -->
-    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css">
+    <!-- ?v= berisi waktu terakhir file diubah, supaya browser selalu memuat CSS terbaru (tidak memakai cache lama) -->
+    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css?v=<?= filemtime(__DIR__ . '/../assets/css/style.css') ?>">
     
     <!-- Chart.js (Loaded for dashboard and reports) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

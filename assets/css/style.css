@@ -157,14 +157,96 @@ a:hover {
     min-height: 100vh;
 }
 
+/* Sidebar melayang di atas konten (tidak menggeser layar).
+   Awalnya disembunyikan di luar layar kiri, muncul saat diberi class "show". */
 .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
     width: var(--sidebar-width);
-    background: #ffffff;
-    border-right: 1px solid var(--card-border);
-    flex-shrink: 0;
+    height: 100vh;
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
-    z-index: 1000;
+    z-index: 1050;
+    color: #ffffff;
+    /* Gradasi biru tua ke biru terang, sedikit transparan */
+    background: linear-gradient(160deg, rgba(30, 58, 138, 0.95) 0%, rgba(37, 99, 235, 0.88) 100%);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 8px 0 30px rgba(15, 23, 42, 0.25);
+    transform: translateX(-105%);
+    transition: transform 0.35s ease;
+}
+
+.sidebar.show {
+    transform: translateX(0);
+}
+
+/* Saat sidebar terbuka, isi halaman bergeser ke kanan supaya tidak tertutup */
+.main-content {
+    transition: margin-left 0.35s ease;
+}
+
+@media (min-width: 768px) {
+    body.sidebar-open .main-content {
+        margin-left: var(--sidebar-width);
+    }
+}
+
+/* Dipakai sesaat ketika halaman baru dimuat dengan sidebar sudah terbuka (tanpa animasi) */
+body.no-sidebar-anim .sidebar,
+body.no-sidebar-anim .main-content {
+    transition: none !important;
+}
+
+/* Tombol X di pojok kanan atas sidebar */
+.sidebar-close {
+    position: absolute;
+    top: 1.4rem;
+    right: 1rem;
+    border: none;
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+}
+
+.sidebar-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Menyesuaikan warna isi sidebar agar terbaca di latar biru */
+.sidebar .text-muted {
+    color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.sidebar .bg-light {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.sidebar .bg-primary {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.sidebar .border-bottom,
+.sidebar .border-top {
+    border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+.sidebar .btn-outline-success,
+.sidebar .btn-outline-danger,
+.sidebar .btn-light {
+    color: #ffffff !important;
+    background: transparent;
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.sidebar .btn-outline-success:hover,
+.sidebar .btn-outline-danger:hover,
+.sidebar .btn-light:hover {
+    background: rgba(255, 255, 255, 0.15);
 }
 
 .sidebar-brand {
@@ -174,8 +256,8 @@ a:hover {
     gap: 0.75rem;
     font-size: 1.25rem;
     font-weight: 800;
-    color: var(--primary-color);
-    border-bottom: 1px solid var(--card-border);
+    color: #ffffff;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .sidebar-nav {
@@ -194,7 +276,7 @@ a:hover {
     align-items: center;
     gap: 0.75rem;
     padding: 0.75rem 1rem;
-    color: var(--text-muted);
+    color: rgba(255, 255, 255, 0.8);
     font-weight: 500;
     border-radius: 10px;
     transition: all 0.2s;
@@ -205,18 +287,19 @@ a:hover {
 }
 
 .sidebar-link:hover {
-    background-color: var(--primary-light);
-    color: var(--primary-color);
+    background-color: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
 }
 
+/* Menu yang sedang aktif: latar putih, tulisan biru (kontras dengan sidebar) */
 .sidebar-link.active {
-    background-color: var(--primary-color);
-    color: #ffffff;
+    background-color: #ffffff;
+    color: var(--primary-color);
     font-weight: 600;
 }
 
 .sidebar-link.active i {
-    color: #ffffff;
+    color: var(--primary-color);
 }
 
 .main-content {
@@ -227,10 +310,53 @@ a:hover {
     background-color: var(--secondary-bg);
 }
 
+/* Header tetap menempel di atas saat halaman di-scroll */
 .top-navbar {
-    background: #ffffff;
-    border-bottom: 1px solid var(--card-border);
+    position: sticky;
+    top: 0;
+    z-index: 1030;
+    gap: 1rem;
+    /* Biru muda bergradasi: beda dari latar abu-abu, tapi tidak terlalu mencolok */
+    background: linear-gradient(90deg, #dbeafe 0%, #eff6ff 100%);
+    border-bottom: 1px solid var(--primary-border);
     padding: 0.85rem 1.5rem;
+}
+
+/* Elemen pertama (judul) mengambil sisa ruang, sehingga tombol dan foto user terdorong ke kanan */
+.top-navbar > :first-child {
+    margin-right: auto;
+}
+
+/* Foto dan nama user di pojok kanan header */
+.topbar-user {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.3rem 0.3rem 0.3rem 0.8rem;   /* ruang lebih di kiri untuk nama */
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid var(--primary-border);
+    flex-shrink: 0;
+}
+
+.topbar-user:hover {
+    background: #ffffff;
+}
+
+.topbar-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.topbar-avatar-initial {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--primary-color);
+    color: #ffffff;
+    font-weight: 700;
 }
 
 /* ==========================================================
@@ -549,3 +675,725 @@ body.is-scrolled .top-navbar {
 }
 
 
+
+/* ==========================================================
+   Halaman Tentang Kami dan section About Us (landing page)
+   ========================================================== */
+
+/* ---------- 1. Kartu Tim ---------- */
+.team-card {
+    text-align: center;
+    padding: 1rem;
+}
+
+/* Kartu ke-2 dan ke-4 diturunkan sedikit agar posisinya selang-seling */
+@media (min-width: 992px) {
+    .team-card-offset {
+        margin-top: 60px;
+    }
+}
+
+.team-photo {
+    width: 140px;
+    height: 140px;
+    margin: 0 auto 1rem;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 4px solid #ffffff;
+    box-shadow: 0 8px 20px rgba(30, 64, 175, 0.15);
+}
+
+/* Foto hitam-putih, berubah berwarna dan sedikit membesar saat disorot */
+.team-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: grayscale(100%);
+    transition: filter 0.4s ease, transform 0.4s ease;
+}
+
+.team-card:hover .team-photo img {
+    filter: grayscale(0%);
+    transform: scale(1.08);
+}
+
+.team-social a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    margin: 0 2px;
+    border-radius: 50%;
+    background-color: var(--primary-light);
+    color: var(--primary-color);
+    font-size: 0.85rem;
+}
+
+.team-social a:hover {
+    background-color: var(--primary-color);
+    color: #ffffff;
+}
+
+/* ---------- 2. Galeri dinamis (accordion foto) ---------- */
+.photo-gallery {
+    display: flex;
+    gap: 12px;
+    height: 380px;
+}
+
+.gallery-card {
+    flex: 1;                      /* kartu biasa: sempit */
+    position: relative;
+    border-radius: 16px;
+    background-size: cover;
+    background-position: center;
+    overflow: hidden;
+    cursor: pointer;
+    transition: flex 0.5s ease;
+}
+
+.gallery-card.active {
+    flex: 4;                      /* kartu aktif: 4 kali lebih lebar */
+}
+
+/* Lapisan gelap di bawah agar tulisan terbaca */
+.gallery-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(15, 23, 42, 0.8), rgba(15, 23, 42, 0) 60%);
+}
+
+.gallery-caption {
+    position: absolute;
+    left: 20px;
+    right: 20px;
+    bottom: 18px;
+    z-index: 1;
+    color: #e2e8f0;
+    opacity: 0;                   /* teks disembunyikan di kartu sempit */
+    transform: translateY(15px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.gallery-card.active .gallery-caption {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Di layar HP, kartu disusun ke bawah */
+@media (max-width: 767px) {
+    .photo-gallery {
+        flex-direction: column;
+        height: 520px;
+    }
+}
+
+/* ---------- 3. Kolase About Us di landing page ---------- */
+.about-collage {
+    position: relative;
+    height: 420px;
+}
+
+/* Bentuk berwarna di belakang foto */
+.about-shape {
+    position: absolute;
+    border-radius: 24px;
+}
+
+.about-shape-1 {
+    width: 55%;
+    height: 70%;
+    top: 0;
+    left: 0;
+    background-color: var(--primary-color);
+}
+
+.about-shape-2 {
+    width: 40%;
+    height: 45%;
+    right: 0;
+    bottom: 0;
+    background-color: var(--warning-color);
+}
+
+.about-img {
+    position: absolute;
+    object-fit: cover;
+    border-radius: 18px;
+    border: 5px solid #ffffff;
+    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.15);
+    transition: transform 0.4s ease;
+}
+
+.about-img:hover {
+    transform: scale(1.04);
+}
+
+.about-img-1 {
+    width: 50%;
+    height: 75%;
+    top: 30px;
+    left: 30px;
+}
+
+.about-img-2 {
+    width: 42%;
+    height: 45%;
+    top: 10px;
+    right: 20px;
+}
+
+.about-img-3 {
+    width: 42%;
+    height: 42%;
+    bottom: 30px;
+    right: 50px;
+}
+
+.about-point-icon {
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--primary-light);
+    color: var(--primary-color);
+    font-size: 1.3rem;
+}
+
+/* ---------- 4. Judul section dua warna (dipakai di Tim Kami dan Lowongan) ---------- */
+.section-label {
+    display: inline-block;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;        /* jarak antar huruf agar terlihat seperti label */
+    text-transform: uppercase;
+    color: var(--warning-color);
+    margin-bottom: 0.5rem;
+}
+
+.section-title {
+    font-size: 2.6rem;
+    font-weight: 800;
+    line-height: 1.2;
+    color: var(--text-main);
+    margin-bottom: 1rem;
+}
+
+/* Bagian kedua judul diberi warna biru utama */
+.section-title .text-accent {
+    color: var(--primary-color);
+}
+
+.section-subtitle {
+    font-size: 1.1rem;
+    color: var(--text-muted);
+    max-width: 640px;
+    margin: 0 auto;
+}
+
+@media (max-width: 767px) {
+    .section-title {
+        font-size: 1.9rem;
+    }
+}
+
+/* Latar belakang abu-abu muda dengan pola titik-titik kecil */
+.bg-dots {
+    background-color: var(--secondary-bg);
+    background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+    background-size: 26px 26px;   /* jarak antar titik */
+}
+
+/* ---------- 5. Foto profil di halaman Profil ---------- */
+.profile-photo-lg {
+    width: 110px;
+    height: 110px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid var(--primary-light);
+    box-shadow: 0 6px 16px rgba(30, 64, 175, 0.15);
+}
+
+/* Lingkaran berisi huruf awal nama jika foto belum ada */
+.profile-photo-initial {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--primary-color);
+    color: #ffffff;
+    font-size: 2.5rem;
+    font-weight: 800;
+}
+
+/* ---------- 6. Section tambahan halaman Tentang Kami ---------- */
+/* Foto dengan sudut membulat (About Us, Mission, Story) */
+.about-rounded-img {
+    width: 100%;
+    height: 340px;
+    object-fit: cover;
+    border-radius: 24px;
+    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
+}
+
+/* Kartu angka statistik */
+.number-card {
+    height: 100%;
+    padding: 2rem 1.5rem;
+    text-align: center;
+    background: #ffffff;
+    border-radius: 18px;
+    border: 1px solid var(--card-border);
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05);
+    transition: transform 0.3s ease;
+}
+
+.number-card:hover {
+    transform: translateY(-6px);
+}
+
+.number-icon {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 1rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    background-color: var(--primary-light);
+    color: var(--primary-color);
+}
+
+.number-value {
+    font-size: 2.6rem;
+    font-weight: 800;
+    color: var(--primary-color);
+    line-height: 1.1;
+}
+
+/* Panel penghargaan */
+.awards-panel {
+    padding: 2rem;
+    border-radius: 18px;
+    background-color: var(--primary-light);
+    border: 1px solid var(--primary-border);
+}
+
+.award-badge {
+    width: 110px;
+    padding: 1rem 0.5rem;
+    text-align: center;
+    background: #ffffff;
+    border-radius: 14px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.06);
+}
+
+.award-badge i {
+    display: block;
+    font-size: 1.8rem;
+    margin-bottom: 0.3rem;
+    color: var(--warning-color);
+}
+
+/* Life at SIREKA: foto di kiri, panel biru di kanan */
+.life-section {
+    display: flex;
+    border-radius: 24px;
+    overflow: hidden;
+    min-height: 420px;
+}
+
+.life-photo {
+    flex: 1;
+    background-size: cover;
+    background-position: center;
+}
+
+.life-panel {
+    flex: 1;
+    padding: 3rem;
+    color: #e0e7ff;
+    background: linear-gradient(135deg, #1e3a8a 0%, var(--primary-color) 100%);
+}
+
+.life-title {
+    color: var(--warning-color);
+    font-size: 2.4rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+}
+
+/* Link besar bergaris bawah dengan panah */
+.life-link {
+    display: block;
+    width: fit-content;
+    margin-bottom: 0.9rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #ffffff;
+    text-decoration: underline;
+    text-underline-offset: 6px;
+}
+
+.life-link i {
+    font-size: 0.9rem;
+    margin-left: 0.3rem;
+    transition: margin-left 0.2s ease;
+}
+
+.life-link:hover {
+    color: var(--warning-color);
+}
+
+.life-link:hover i {
+    margin-left: 0.7rem;      /* panah bergeser sedikit saat disorot */
+}
+
+/* Di layar kecil, foto dan panel disusun atas-bawah */
+@media (max-width: 991px) {
+    .life-section {
+        flex-direction: column;
+    }
+    .life-photo {
+        min-height: 260px;
+    }
+    .life-panel {
+        padding: 2rem;
+    }
+}
+
+/* ---------- 7. Header tabel berwarna biru (halaman setelah login) ---------- */
+/* Bootstrap mengatur warna sel lewat variabel --bs-table-bg, jadi variabel itu yang diganti */
+.main-content .table > thead > tr > th {
+    --bs-table-bg: var(--primary-color);
+    --bs-table-color: #ffffff;
+    border-color: var(--primary-color);
+    font-weight: 600;
+}
+
+/* Sudut atas tabel dibuat membulat */
+.main-content .table > thead > tr > th:first-child {
+    border-top-left-radius: 10px;
+}
+
+.main-content .table > thead > tr > th:last-child {
+    border-top-right-radius: 10px;
+}
+
+/* ---------- 8. Kartu divisi yang bisa digeser (halaman Tentang Kami) ---------- */
+.division-section {
+    padding: 2.5rem;
+    border-radius: 24px;
+    background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #3b82f6 100%);
+}
+
+/* Satu baris, kartu yang tidak muat bisa digeser ke samping */
+.division-scroll {
+    display: flex;
+    gap: 1rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;   /* kartu berhenti rapi saat digeser */
+    padding-bottom: 0.75rem;
+}
+
+.division-card {
+    flex: 0 0 260px;                 /* lebar tetap ukuran sedang */
+    scroll-snap-align: start;
+    padding: 1.5rem;
+    border-radius: 18px;
+    color: rgba(255, 255, 255, 0.85);
+    /* Putih transparan dengan efek kaca buram */
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    transition: background 0.3s ease, transform 0.3s ease;
+}
+
+.division-card:hover {
+    background: rgba(255, 255, 255, 0.22);
+    transform: translateY(-4px);
+}
+
+.division-icon {
+    width: 44px;
+    height: 44px;
+    margin-bottom: 1rem;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    color: var(--warning-color);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.division-nav {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+
+.division-nav:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+/* Garis geser (scrollbar) dibuat tipis */
+.division-scroll::-webkit-scrollbar {
+    height: 6px;
+}
+
+.division-scroll::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.35);
+    border-radius: 10px;
+}
+
+/* ---------- 9. Header halaman Lowongan: foto + lapisan biru ---------- */
+.jobs-hero {
+    position: relative;
+    background-size: cover;
+    background-position: center;
+}
+
+/* Lapisan biru transparan di atas foto */
+.jobs-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(30, 58, 138, 0.88) 0%, rgba(30, 64, 175, 0.78) 100%);
+}
+
+/* Isi header berada di atas lapisan biru */
+.jobs-hero .container {
+    position: relative;
+}
+
+.jobs-hero .section-title {
+    color: #ffffff;
+}
+
+.jobs-hero .section-title .text-accent {
+    color: #93c5fd;              /* biru muda agar tetap terbaca di latar biru */
+}
+
+.jobs-hero .section-subtitle {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+/* ---------- 10. Hero landing page dengan foto gedung yang bergerak pelan ---------- */
+.hero-building-section {
+    min-height: 560px;
+    display: flex;
+    align-items: center;
+}
+
+/* Lapisan foto gedung */
+.hero-building-bg {
+    position: absolute;
+    inset: 0;
+    background-image: url('../img/hero-building.jpg');
+    background-size: cover;
+    background-position: center;
+    animation: heroSlowZoom 20s ease-in-out infinite alternate;   /* efek bergerak pelan */
+}
+
+/* Foto membesar dan bergeser sedikit secara perlahan, lalu kembali */
+@keyframes heroSlowZoom {
+    from { transform: scale(1) translateX(0); }
+    to   { transform: scale(1.12) translateX(-2%); }
+}
+
+/* Lapisan biru transparan di atas foto agar tulisan putih terbaca */
+.hero-building-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(30, 58, 138, 0.85) 0%, rgba(30, 64, 175, 0.7) 50%, rgba(59, 130, 246, 0.55) 100%);
+}
+
+/* Isi hero berada paling atas */
+.hero-building-content {
+    position: relative;
+    z-index: 2;
+}
+
+/* ---------- 11. Halaman login: foto gedung penuh layar + kartu kaca ---------- */
+.login-page {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6rem 1rem 3rem;
+    overflow: hidden;
+    /* Lapisan biru gelap di atas foto agar kartu terlihat jelas */
+    background-image: linear-gradient(rgba(15, 23, 42, 0.55), rgba(15, 23, 42, 0.55)),
+                      url('../img/building-bg.jpg');
+    background-size: cover;
+    background-position: center;
+}
+
+/* Header khusus login: logo di kiri, dua tombol di kanan */
+.login-header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem 1.5rem;
+    z-index: 3;
+}
+
+.login-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1.1rem;
+    border-radius: 999px;
+    background: #ffffff;
+    color: var(--text-main);
+    font-weight: 800;
+}
+
+.login-brand i {
+    color: var(--primary-color);
+}
+
+.login-pill {
+    padding: 0.5rem 1.1rem;
+    border-radius: 999px;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.login-pill-light {
+    background: #ffffff;
+    color: var(--text-main);
+}
+
+.login-pill-dark {
+    background: #0f172a;
+    color: #ffffff;
+}
+
+.login-pill-light:hover {
+    background: var(--primary-light);
+    color: var(--primary-color);
+}
+
+.login-pill-dark:hover {
+    background: #1e293b;
+    color: #ffffff;
+}
+
+/* Lingkaran tipis di belakang kartu */
+.login-circle {
+    position: absolute;
+    width: 620px;
+    height: 620px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+/* Kartu login: biru muda transparan dengan efek kaca buram */
+.login-glass {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 420px;
+    padding: 2.5rem 2rem;
+    border-radius: 28px;
+    background: linear-gradient(180deg, rgba(219, 234, 254, 0.92) 0%, rgba(255, 255, 255, 0.88) 100%);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 25px 50px rgba(15, 23, 42, 0.35);
+}
+
+.login-icon-box {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 1rem;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    background: #ffffff;
+    color: var(--text-main);
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.1);
+}
+
+/* Kolom input dengan ikon di kiri */
+.login-input {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0 0.9rem;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid var(--card-border);
+}
+
+.login-input:focus-within {
+    border-color: var(--primary-color);
+}
+
+.login-input i {
+    color: var(--text-muted);
+}
+
+.login-input input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 0.75rem 0;
+    outline: none;
+}
+
+.login-eye {
+    border: none;
+    background: transparent;
+    padding: 0;
+    color: var(--text-muted);
+}
+
+/* Tombol masuk berwarna hitam */
+.login-submit {
+    padding: 0.75rem;
+    border-radius: 12px;
+    background: #0f172a;
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.login-submit:hover {
+    background: #1e293b;
+    color: #ffffff;
+}
+
+@media (max-width: 575px) {
+    .login-header {
+        padding: 1rem;
+    }
+    .login-circle {
+        display: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hero-building-bg {
+        animation: none;
+    }
+}

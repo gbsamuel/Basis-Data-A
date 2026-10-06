@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
-requireRole(['admin', 'interviewer']);
+requireRole('hr'); // khusus HR (proses rekrutmen)
 
 $pdo = getDB();
 $pageTitle = 'Direktori Data Kandidat - SIREKA Admin';
@@ -41,7 +41,7 @@ require_once __DIR__ . '/../includes/header.php';
     <main class="main-content">
         <header class="top-navbar d-flex justify-content-between align-items-center">
             <div class="d-flex align-items-center gap-3">
-                <button class="btn btn-outline-secondary d-md-none" id="sidebarToggle">
+                <button class="btn btn-outline-secondary" id="sidebarToggle" title="Tampilkan menu">
                     <i class="bi bi-list"></i>
                 </button>
                 <div>
@@ -49,6 +49,7 @@ require_once __DIR__ . '/../includes/header.php';
                     <small class="text-muted">Daftar pencari kerja terdaftar dengan ringkasan keahlian dan status rekrutmen</small>
                 </div>
             </div>
+        <?php require __DIR__ . '/../includes/topbar_user.php'; ?>
         </header>
 
         <div class="p-4">
