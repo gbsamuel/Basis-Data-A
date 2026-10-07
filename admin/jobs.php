@@ -15,31 +15,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_save_job'])) {
     $idDivision = (int)($_POST['id_division'] ?? 0);
     $namaJob = trim($_POST['nama_job'] ?? '');
     $jobType = trim($_POST['job_type'] ?? 'Kerja');
+    // Durasi hanya untuk Magang dan PKL
+    $durasi = in_array($jobType, ['Magang', 'PKL']) && !empty($_POST['durasi_bulan']) ? (int)$_POST['durasi_bulan'] : null;
     $deskripsi = trim($_POST['deskripsi'] ?? '');
     $requirements = trim($_POST['requirements'] ?? '');
     $responsibilities = trim($_POST['responsibilities'] ?? '');
-    $eduReq = trim($_POST['education_requirement'] ?? 'S1');
+    $eduReq = trim($_POST['min_pendidikan'] ?? 'S1');
     $expReq = trim($_POST['experience_requirement'] ?? '1-2 Tahun');
     $salaryMin = !empty($_POST['salary_min']) ? (float)$_POST['salary_min'] : null;
     $salaryMax = !empty($_POST['salary_max']) ? (float)$_POST['salary_max'] : null;
-    $location = trim($_POST['location'] ?? 'Jakarta');
+    // Sistem kerja hanya boleh salah satu dari 3 pilihan (sama dengan ENUM di database)
+    $sistemKerja = in_array($_POST['sistem_kerja'] ?? '', ['Onsite', 'Hybrid', 'Remote']) ? $_POST['sistem_kerja'] : 'Onsite';
     $deadline = trim($_POST['deadline'] ?? date('Y-m-d', strtotime('+30 days')));
     $status = trim($_POST['status'] ?? 'Open');
     $selectedSkills = $_POST['skills'] ?? []; // Array of skill IDs
+
+    // PIC: kepala HR boleh memilih PIC; HR biasa otomatis menjadi PIC lowongan yang ia buat
+    $myNik = currentUser()['nik'];
+    $picNik = isKepalaHr() ? (trim($_POST['pic_nik'] ?? '') ?: null) : $myNik;
+
+    if ($idJob > 0 && !canProcessJob($pdo, $idJob)) {
+        setFlash('danger', 'Hanya PIC lowongan ini atau kepala HR yang boleh mengubahnya.');
+        header('Location: ' . BASE_URL . '/admin/jobs.php');
+        exit;
+    }
 
     if ($idDivision > 0 && !empty($namaJob)) {
         if ($idJob > 0) {
             $stmt = $pdo->prepare("
                 UPDATE job 
-                SET id_division = ?, nama_job = ?, job_type = ?, deskripsi = ?, requirements = ?, responsibilities = ?,
-                    education_requirement = ?, experience_requirement = ?, salary_min = ?, salary_max = ?,
-                    location = ?, deadline = ?, status = ?
+                SET id_division = ?, nama_job = ?, job_type = ?, durasi_bulan = ?, deskripsi = ?, requirements = ?, responsibilities = ?,
+                    min_pendidikan = ?, experience_requirement = ?, salary_min = ?, salary_max = ?,
+                    sistem_kerja = ?, deadline = ?, status = ?
                 WHERE id_job = ?
             ");
             $stmt->execute([
-                $idDivision, $namaJob, $jobType, $deskripsi, $requirements, $responsibilities,
-                $eduReq, $expReq, $salaryMin, $salaryMax, $location, $deadline, $status, $idJob
+                $idDivision, $namaJob, $jobType, $durasi, $deskripsi, $requirements, $responsibilities,
+                $eduReq, $expReq, $salaryMin, $salaryMax, $sistemKerja, $deadline, $status, $idJob
             ]);
+
+            // Hanya kepala HR yang boleh mengganti PIC
+            if (isKepalaHr()) {
+                $pdo->prepare("UPDATE job SET pic_nik = ? WHERE id_job = ?")->execute([$picNik, $idJob]);
+            }
 
             // Sync skills in junction table: job_skill
             $pdo->prepare("DELETE FROM job_skill WHERE id_job = ?")->execute([$idJob]);
@@ -51,13 +69,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_save_job'])) {
             setFlash('success', 'Lowongan pekerjaan berhasil diperbarui.');
         } else {
             $stmt = $pdo->prepare("
-                INSERT INTO job (id_division, nama_job, job_type, deskripsi, requirements, responsibilities,
-                                 education_requirement, experience_requirement, salary_min, salary_max, location, deadline, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO job (id_division, pic_nik, nama_job, job_type, durasi_bulan, deskripsi, requirements, responsibilities,
+                                 min_pendidikan, experience_requirement, salary_min, salary_max, sistem_kerja, deadline, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
-                $idDivision, $namaJob, $jobType, $deskripsi, $requirements, $responsibilities,
-                $eduReq, $expReq, $salaryMin, $salaryMax, $location, $deadline, $status
+                $idDivision, $picNik, $namaJob, $jobType, $durasi, $deskripsi, $requirements, $responsibilities,
+                $eduReq, $expReq, $salaryMin, $salaryMax, $sistemKerja, $deadline, $status
             ]);
             $newJobId = $pdo->lastInsertId();
 
@@ -79,9 +97,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_save_job'])) {
 // Handle Delete
 if (isset($_GET['delete'])) {
     $delId = (int)$_GET['delete'];
-    $stmt = $pdo->prepare("DELETE FROM job WHERE id_job = ?");
-    $stmt->execute([$delId]);
-    setFlash('info', 'Lowongan pekerjaan berhasil dihapus.');
+    if (canProcessJob($pdo, $delId)) {
+        $stmt = $pdo->prepare("DELETE FROM job WHERE id_job = ?");
+        $stmt->execute([$delId]);
+        setFlash('info', 'Lowongan pekerjaan berhasil dihapus.');
+    } else {
+        setFlash('danger', 'Hanya PIC lowongan ini atau kepala HR yang boleh menghapusnya.');
+    }
     header('Location: ' . BASE_URL . '/admin/jobs.php');
     exit;
 }
@@ -90,9 +112,13 @@ if (isset($_GET['delete'])) {
 if (isset($_GET['toggle_status']) && isset($_GET['id'])) {
     $tId = (int)$_GET['id'];
     $newSt = $_GET['toggle_status'] === 'Open' ? 'Closed' : 'Open';
-    $stmt = $pdo->prepare("UPDATE job SET status = ? WHERE id_job = ?");
-    $stmt->execute([$newSt, $tId]);
-    setFlash('success', "Status lowongan berhasil diubah menjadi {$newSt}.");
+    if (canProcessJob($pdo, $tId)) {
+        $stmt = $pdo->prepare("UPDATE job SET status = ? WHERE id_job = ?");
+        $stmt->execute([$newSt, $tId]);
+        setFlash('success', "Status lowongan berhasil diubah menjadi {$newSt}.");
+    } else {
+        setFlash('danger', 'Hanya PIC lowongan ini atau kepala HR yang boleh mengubah statusnya.');
+    }
     header('Location: ' . BASE_URL . '/admin/jobs.php');
     exit;
 }
@@ -106,6 +132,18 @@ $divisions = $pdo->query("
 ")->fetchAll();
 
 $allSkills = $pdo->query("SELECT * FROM skill ORDER BY nama_skill ASC")->fetchAll();
+
+// Daftar akun HR untuk pilihan PIC (dipakai kepala HR)
+$hrList = $pdo->query("
+    SELECT u.nik, u.nama, s.jabatan
+    FROM user_all u
+    JOIN staff s ON s.nik = u.nik
+    WHERE u.role = 'hr'
+    ORDER BY u.nama ASC
+")->fetchAll();
+
+$myNik = currentUser()['nik'];
+$onlyMine = ($_GET['mine'] ?? '') === '1';
 
 // If editing, fetch job and assigned skill IDs
 $jobEdit = null;
@@ -121,15 +159,23 @@ if ($editId > 0 && ($action === 'edit' || $action === 'create')) {
 }
 
 // Query all jobs for list view
-$stmtJobs = $pdo->query("
-    SELECT j.*, d.nama_divisi, c.nama_company,
+$sqlJobs = "
+    SELECT j.*, d.nama_divisi, c.nama_company, pic.nama AS nama_pic,
            (SELECT COUNT(*) FROM application a WHERE a.id_job = j.id_job) as total_applicants,
            (SELECT COUNT(*) FROM job_skill js WHERE js.id_job = j.id_job) as total_skills
     FROM job j
     JOIN division d ON j.id_division = d.id_division
     JOIN company c ON d.id_company = c.id_company
-    ORDER BY j.created_at DESC
-");
+    LEFT JOIN user_all pic ON pic.nik = j.pic_nik
+";
+$paramsJobs = [];
+if ($onlyMine) {
+    $sqlJobs .= " WHERE j.pic_nik = ?";
+    $paramsJobs[] = $myNik;
+}
+$sqlJobs .= " ORDER BY j.created_at DESC";
+$stmtJobs = $pdo->prepare($sqlJobs);
+$stmtJobs->execute($paramsJobs);
 $jobs = $stmtJobs->fetchAll();
 
 require_once __DIR__ . '/../includes/header.php';
@@ -187,6 +233,7 @@ require_once __DIR__ . '/../includes/header.php';
                                 <option value="Kerja" <?= ($jobEdit['job_type'] ?? '') === 'Kerja' ? 'selected' : '' ?>>Kerja (Full-Time)</option>
                                 <option value="Magang" <?= ($jobEdit['job_type'] ?? '') === 'Magang' ? 'selected' : '' ?>>Magang (Internship)</option>
                                 <option value="Management Trainee" <?= ($jobEdit['job_type'] ?? '') === 'Management Trainee' ? 'selected' : '' ?>>Management Trainee (MT)</option>
+                                <option value="PKL" <?= ($jobEdit['job_type'] ?? '') === 'PKL' ? 'selected' : '' ?>>PKL (Praktik Kerja Lapangan)</option>
                             </select>
                         </div>
 
@@ -212,8 +259,12 @@ require_once __DIR__ . '/../includes/header.php';
                         </div>
 
                         <div class="col-md-3">
-                            <label class="form-label small fw-semibold">Lokasi Penempatan <span class="text-danger">*</span></label>
-                            <input type="text" name="location" required class="form-control" placeholder="Contoh: Jakarta Selatan" value="<?= htmlspecialchars($jobEdit['location'] ?? 'Jakarta') ?>">
+                            <label class="form-label small fw-semibold">Sistem Kerja <span class="text-danger">*</span></label>
+                            <select name="sistem_kerja" class="form-select" required>
+                                <?php foreach (['Onsite', 'Hybrid', 'Remote'] as $sk): ?>
+                                    <option value="<?= $sk ?>" <?= ($jobEdit['sistem_kerja'] ?? 'Onsite') === $sk ? 'selected' : '' ?>><?= $sk ?></option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
 
                         <div class="col-md-3">
@@ -223,13 +274,32 @@ require_once __DIR__ . '/../includes/header.php';
 
                         <div class="col-md-3">
                             <label class="form-label small fw-semibold">Pendidikan Minimal</label>
-                            <select name="education_requirement" class="form-select">
-                                <option value="SMA / SMK" <?= ($jobEdit['education_requirement'] ?? '') === 'SMA / SMK' ? 'selected' : '' ?>>SMA / SMK</option>
-                                <option value="D3" <?= ($jobEdit['education_requirement'] ?? '') === 'D3' ? 'selected' : '' ?>>D3</option>
-                                <option value="S1" <?= ($jobEdit['education_requirement'] ?? 'S1') === 'S1' ? 'selected' : '' ?>>S1</option>
-                                <option value="S2" <?= ($jobEdit['education_requirement'] ?? '') === 'S2' ? 'selected' : '' ?>>S2</option>
+                            <select name="min_pendidikan" class="form-select">
+                                <?php foreach (jenjangOptions() as $jenjang): ?>
+                                    <option value="<?= $jenjang ?>" <?= ($jobEdit['min_pendidikan'] ?? 'S1') === $jenjang ? 'selected' : '' ?>><?= $jenjang ?></option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold">Durasi (bulan, untuk Magang/PKL)</label>
+                            <input type="number" name="durasi_bulan" min="1" max="24" class="form-control" placeholder="cth: 3" value="<?= htmlspecialchars((string)($jobEdit['durasi_bulan'] ?? '')) ?>">
+                        </div>
+
+                        <?php if (isKepalaHr()): ?>
+                            <!-- Hanya kepala HR yang bisa memilih / mengganti PIC -->
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">PIC Lowongan (HR penanggung jawab)</label>
+                                <select name="pic_nik" class="form-select">
+                                    <option value="">Belum ada PIC</option>
+                                    <?php foreach ($hrList as $hr): ?>
+                                        <option value="<?= $hr['nik'] ?>" <?= ($jobEdit['pic_nik'] ?? $myNik) === $hr['nik'] ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($hr['nama']) ?> (<?= htmlspecialchars($hr['jabatan']) ?>)
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        <?php endif; ?>
 
                         <div class="col-md-3">
                             <label class="form-label small fw-semibold">Pengalaman Minimal</label>
@@ -295,6 +365,12 @@ require_once __DIR__ . '/../includes/header.php';
                     </form>
                 </div>
             <?php else: ?>
+                <!-- Filter: semua lowongan atau hanya lowongan yang saya pegang -->
+                <div class="d-flex gap-2 mb-3">
+                    <a href="<?= BASE_URL ?>/admin/jobs.php" class="btn btn-sm <?= $onlyMine ? 'btn-outline-primary' : 'btn-primary' ?>">Semua Lowongan</a>
+                    <a href="<?= BASE_URL ?>/admin/jobs.php?mine=1" class="btn btn-sm <?= $onlyMine ? 'btn-primary' : 'btn-outline-primary' ?>">Lowongan Saya (PIC)</a>
+                </div>
+
                 <!-- Table of Jobs -->
                 <div class="card-custom p-4 border-0 shadow-sm">
                     <div class="table-responsive">
@@ -304,6 +380,7 @@ require_once __DIR__ . '/../includes/header.php';
                                     <th>Posisi Pekerjaan</th>
                                     <th>Divisi IT</th>
                                     <th>Tipe</th>
+                                    <th>PIC</th>
                                     <th>Gaji</th>
                                     <th>Keahlian</th>
                                     <th>Pelamar</th>
@@ -316,7 +393,7 @@ require_once __DIR__ . '/../includes/header.php';
                                     <tr>
                                         <td>
                                             <div class="fw-bold text-dark"><?= htmlspecialchars($j['nama_job']) ?></div>
-                                            <small class="text-muted"><i class="bi bi-geo-alt me-1"></i> <?= htmlspecialchars($j['location']) ?></small>
+                                            <small class="text-muted"><i class="bi bi-laptop me-1"></i> <?= htmlspecialchars($j['sistem_kerja']) ?></small>
                                         </td>
                                         <td>
                                             <span class="badge bg-primary-light text-primary border border-primary-subtle">
@@ -325,6 +402,17 @@ require_once __DIR__ . '/../includes/header.php';
                                         </td>
                                         <td>
                                             <span class="badge bg-primary-light text-primary"><?= htmlspecialchars($j['job_type']) ?></span>
+                                            <?php if (!empty($j['durasi_bulan'])): ?>
+                                                <small class="text-muted d-block"><?= (int)$j['durasi_bulan'] ?> bulan</small>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="small">
+                                            <?php if ($j['pic_nik']): ?>
+                                                <?= htmlspecialchars($j['nama_pic']) ?>
+                                                <?php if ($j['pic_nik'] === $myNik): ?><span class="badge bg-success ms-1">Saya</span><?php endif; ?>
+                                            <?php else: ?>
+                                                <span class="badge bg-danger">Belum ada PIC</span>
+                                            <?php endif; ?>
                                         </td>
                                         <td class="small">
                                             <?= formatRupiah($j['salary_min']) ?> - <?= formatRupiah($j['salary_max']) ?>
@@ -337,18 +425,27 @@ require_once __DIR__ . '/../includes/header.php';
                                                 <?= $j['total_applicants'] ?> Pelamar
                                             </a>
                                         </td>
+                                        <?php $bisaKelola = isKepalaHr() || $j['pic_nik'] === $myNik; ?>
                                         <td>
-                                            <a href="<?= BASE_URL ?>/admin/jobs.php?toggle_status=<?= $j['status'] ?>&id=<?= $j['id_job'] ?>" class="badge <?= $j['status'] === 'Open' ? 'bg-success' : 'bg-secondary' ?> text-decoration-none" title="Klik untuk ubah status">
-                                                <?= $j['status'] ?>
-                                            </a>
+                                            <?php if ($bisaKelola): ?>
+                                                <a href="<?= BASE_URL ?>/admin/jobs.php?toggle_status=<?= $j['status'] ?>&id=<?= $j['id_job'] ?>" class="badge <?= $j['status'] === 'Open' ? 'bg-success' : 'bg-secondary' ?> text-decoration-none" title="Klik untuk ubah status">
+                                                    <?= $j['status'] ?>
+                                                </a>
+                                            <?php else: ?>
+                                                <span class="badge <?= $j['status'] === 'Open' ? 'bg-success' : 'bg-secondary' ?>"><?= $j['status'] ?></span>
+                                            <?php endif; ?>
                                         </td>
                                         <td class="text-end">
-                                            <a href="<?= BASE_URL ?>/admin/jobs.php?action=edit&id=<?= $j['id_job'] ?>" class="btn btn-sm btn-outline-primary me-1" title="Edit">
-                                                <i class="bi bi-pencil"></i>
-                                            </a>
-                                            <a href="<?= BASE_URL ?>/admin/jobs.php?delete=<?= $j['id_job'] ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('Hapus lowongan pekerjaan ini?')" title="Hapus">
-                                                <i class="bi bi-trash"></i>
-                                            </a>
+                                            <?php if ($bisaKelola): ?>
+                                                <a href="<?= BASE_URL ?>/admin/jobs.php?action=edit&id=<?= $j['id_job'] ?>" class="btn btn-sm btn-outline-primary me-1" title="Edit">
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                                <a href="<?= BASE_URL ?>/admin/jobs.php?delete=<?= $j['id_job'] ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('Hapus lowongan pekerjaan ini?')" title="Hapus">
+                                                    <i class="bi bi-trash"></i>
+                                                </a>
+                                            <?php else: ?>
+                                                <span class="text-muted small">Hanya lihat</span>
+                                            <?php endif; ?>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>

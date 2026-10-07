@@ -96,6 +96,12 @@ $user = currentUser();
                 <span>Letter of Acceptance (LoA)</span>
             </a>
         </li>
+        <li class="sidebar-item">
+            <a href="<?= BASE_URL ?>/admin/talent_pool.php" class="sidebar-link <?= $activeSidebar === 'talent_pool' ? 'active' : '' ?>">
+                <i class="bi bi-stars"></i>
+                <span>Talent Pool</span>
+            </a>
+        </li>
         <?php endif; ?>
     </ul>
 

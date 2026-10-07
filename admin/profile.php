@@ -3,8 +3,11 @@ require_once __DIR__ . '/../config/database.php';
 requireRole(['hr', 'admin']);
 
 $pdo = getDB();
-$user = currentUser();
-$nik = $user['nik'];
+$nik = currentUser()['nik'];
+
+// Ambil data terbaru (akun + data staf) lalu simpan ulang ke session
+$user = loadUserProfile($pdo, $nik);
+$_SESSION['user'] = $user;
 
 $pageTitle = 'Profil Saya - SIREKA Admin';
 $activeSidebar = 'profile';
@@ -52,16 +55,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_upload_photo']
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_update_profile'])) {
     $nama = trim($_POST['nama'] ?? '');
     $noTelepon = trim($_POST['no_telepon'] ?? '');
-    $alamat = trim($_POST['alamat'] ?? '');
 
     if (!empty($nama) && !empty($noTelepon)) {
-        $stmt = $pdo->prepare("UPDATE user_all SET nama = ?, no_telepon = ?, alamat = ? WHERE nik = ?");
-        $stmt->execute([$nama, $noTelepon, $alamat, $nik]);
+        $stmt = $pdo->prepare("UPDATE user_all SET nama = ?, no_telepon = ? WHERE nik = ?");
+        $stmt->execute([$nama, $noTelepon, $nik]);
 
         // Perbarui session supaya nama baru langsung tampil di header
-        $stmtUser = $pdo->prepare("SELECT * FROM user_all WHERE nik = ?");
-        $stmtUser->execute([$nik]);
-        $_SESSION['user'] = $stmtUser->fetch();
+        $_SESSION['user'] = loadUserProfile($pdo, $nik);
         $_SESSION['user_name'] = $nama;
         setFlash('success', 'Data diri berhasil diperbarui.');
     } else {
@@ -96,11 +96,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_change_passwor
     exit;
 }
 
-// Jabatan staf (HR dan admin) diambil dari tabel company_admin lewat NIK
-$stmtPos = $pdo->prepare("SELECT position FROM company_admin WHERE nik = ? LIMIT 1");
-$stmtPos->execute([$nik]);
-$jabatan = $stmtPos->fetchColumn() ?: '-';
-$roleLabel = $user['role'] === 'admin' ? 'Admin' : 'HR';
+// Jabatan staf diambil dari tabel staff (sudah ikut dimuat oleh loadUserProfile)
+$jabatan = $user['jabatan'] ?? '-';
+$roleLabel = $user['role'] === 'admin' ? 'Admin' : (isKepalaHr() ? 'Kepala HR' : 'HR');
 
 require_once __DIR__ . '/../includes/header.php';
 ?>
@@ -204,10 +202,6 @@ require_once __DIR__ . '/../includes/header.php';
                             <div class="col-md-6">
                                 <label class="form-label small fw-semibold">Nomor Telepon <span class="text-danger">*</span></label>
                                 <input type="tel" name="no_telepon" class="form-control" required value="<?= htmlspecialchars($user['no_telepon']) ?>">
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label small fw-semibold">Alamat</label>
-                                <textarea name="alamat" class="form-control" rows="2"><?= htmlspecialchars($user['alamat']) ?></textarea>
                             </div>
                             <div class="col-12">
                                 <button type="submit" class="btn btn-primary">Simpan Perubahan</button>

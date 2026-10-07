@@ -2,19 +2,38 @@
 require_once __DIR__ . '/../config/database.php';
 requireRole('hr'); // khusus HR (proses rekrutmen)
 
-header('Location: ' . BASE_URL . '/admin/dashboard.php');
-exit;
+$pdo = getDB();
+$pageTitle = 'Talent Pool - SIREKA Admin';
+$activeSidebar = 'talent_pool';
 
+// Ubah status kandidat talent pool (Available / Considered / Hired / Inactive)
+if (isset($_GET['update_status']) && isset($_GET['id'])) {
+    $newStatus = $_GET['update_status'];
+    if (in_array($newStatus, ['Available', 'Considered', 'Hired', 'Inactive'])) {
+        $stmt = $pdo->prepare("UPDATE talent_pool SET status = ? WHERE id_talent_pool = ?");
+        $stmt->execute([$newStatus, (int)$_GET['id']]);
+        setFlash('success', 'Status talent pool berhasil diperbarui menjadi ' . $newStatus . '.');
+    }
+    header('Location: ' . BASE_URL . '/admin/talent_pool.php');
+    exit;
+}
+
+$search = trim($_GET['search'] ?? '');
+$statusFilter = trim($_GET['status'] ?? '');
+
+// Satu baris per kandidat, lengkap dengan lowongan asal dan daftar skill-nya
 $sql = "
-    SELECT tp.*, u.nama as nama_kandidat, u.email, u.no_telepon, u.pendidikan_terakhir,
-           c.nama_company, j.nama_job,
+    SELECT tp.*, u.nama as nama_kandidat, u.email, u.no_telepon,
+           CONCAT(p.jenjang_pendidikan, ' ', p.jurusan) AS pendidikan_terakhir,
+           j.nama_job, hr.nama AS nama_hr,
            GROUP_CONCAT(s.nama_skill SEPARATOR ', ') as skills_list
     FROM talent_pool tp
     JOIN user_all u ON tp.nik = u.nik
-    JOIN company c ON tp.id_company = c.id_company
+    JOIN pelamar p ON p.nik = tp.nik
     LEFT JOIN application a ON tp.source_application = a.id_application
     LEFT JOIN job j ON a.id_job = j.id_job
-    LEFT JOIN user_skill us ON u.nik = us.nik
+    LEFT JOIN user_all hr ON hr.nik = tp.added_by
+    LEFT JOIN user_skill us ON tp.nik = us.nik
     LEFT JOIN skill s ON us.id_skill = s.id_skill
     WHERE 1=1
 ";
@@ -151,6 +170,7 @@ require_once __DIR__ . '/../includes/header.php';
                                         </td>
                                         <td class="small text-muted">
                                             <?= formatTanggalIndo($tp['added_at']) ?>
+                                            <small class="d-block">oleh <?= htmlspecialchars($tp['nama_hr'] ?? '-') ?></small>
                                         </td>
                                         <td>
                                             <span class="badge <?= $tp['status'] === 'Available' ? 'bg-success' : ($tp['status'] === 'Considered' ? 'bg-warning text-dark' : 'bg-secondary') ?>">
@@ -166,6 +186,7 @@ require_once __DIR__ . '/../includes/header.php';
                                                     <li><a class="dropdown-item" href="<?= BASE_URL ?>/admin/talent_pool.php?update_status=Considered&id=<?= $tp['id_talent_pool'] ?>">Pertimbangkan Posisi Baru (Considered)</a></li>
                                                     <li><a class="dropdown-item" href="<?= BASE_URL ?>/admin/talent_pool.php?update_status=Hired&id=<?= $tp['id_talent_pool'] ?>">Tandai Telah Direkrut (Hired)</a></li>
                                                     <li><a class="dropdown-item" href="<?= BASE_URL ?>/admin/talent_pool.php?update_status=Available&id=<?= $tp['id_talent_pool'] ?>">Set Available</a></li>
+                                                    <li><a class="dropdown-item" href="<?= BASE_URL ?>/admin/talent_pool.php?update_status=Inactive&id=<?= $tp['id_talent_pool'] ?>">Tidak Aktif (Inactive)</a></li>
                                                 </ul>
                                             </div>
                                         </td>

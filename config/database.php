@@ -121,6 +121,52 @@ function requireLogin() {
 }
 
 /**
+ * Ambil data lengkap satu akun: data akun (user_all) + data pelamar ATAU data staf.
+ * Hasilnya disimpan di session supaya halaman lain bisa langsung memakai $user['jurusan'], dll.
+ */
+function loadUserProfile($pdo, $nik) {
+    $stmt = $pdo->prepare("
+        SELECT u.*,
+               p.tanggal_lahir, p.jenjang_pendidikan, p.jurusan, p.institusi,
+               p.status_pendidikan, p.tahun_lulus, p.alamat,
+               CONCAT(p.jenjang_pendidikan, ' ', p.jurusan) AS pendidikan_terakhir,
+               s.jabatan, s.is_kepala_hr
+        FROM user_all u
+        LEFT JOIN pelamar p ON p.nik = u.nik
+        LEFT JOIN staff s ON s.nik = u.nik
+        WHERE u.nik = ?
+    ");
+    $stmt->execute([$nik]);
+    return $stmt->fetch();
+}
+
+/**
+ * Kepala HR = akun ber-role 'hr' yang ditandai is_kepala_hr = 1 di tabel staff.
+ */
+function isKepalaHr() {
+    return hasRole('hr') && !empty($_SESSION['user']['is_kepala_hr']);
+}
+
+/**
+ * Apakah HR yang sedang login boleh memproses lowongan ini?
+ * Boleh jika ia PIC lowongan tersebut, atau jika ia kepala HR.
+ */
+function canProcessJob($pdo, $idJob) {
+    if (!hasRole('hr')) return false;
+    if (isKepalaHr()) return true;
+    $stmt = $pdo->prepare("SELECT pic_nik FROM job WHERE id_job = ?");
+    $stmt->execute([$idJob]);
+    return $stmt->fetchColumn() === ($_SESSION['user_nik'] ?? '');
+}
+
+/**
+ * Daftar pilihan jenjang pendidikan (sama dengan ENUM di database).
+ */
+function jenjangOptions() {
+    return ['SMA/SMK', 'D3', 'S1', 'S2', 'S3'];
+}
+
+/**
  * Halaman pertama sesuai role:
  * admin -> Pengaturan Sistem, hr -> Dashboard HR, user -> Dashboard Pelamar
  */

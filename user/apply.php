@@ -3,8 +3,8 @@ require_once __DIR__ . '/../config/database.php';
 requireRole('user');
 
 $pdo = getDB();
-$user = currentUser();
-$nik = $user['nik'];
+$nik = currentUser()['nik'];
+$user = loadUserProfile($pdo, $nik);   // akun + data pelamar (pendidikan, alamat, dll.)
 
 $jobId = isset($_GET['job_id']) ? (int)$_GET['job_id'] : 0;
 
@@ -14,13 +14,13 @@ $stmt = $pdo->prepare("
     FROM job j
     JOIN division d ON j.id_division = d.id_division
     JOIN company c ON d.id_company = c.id_company
-    WHERE j.id_job = ? AND j.status = 'Open'
-");
+    WHERE j.id_job = ? AND j.status = 'Open' AND j.deadline >= CURDATE()
+");   // lowongan yang sudah lewat deadline tidak bisa dilamar
 $stmt->execute([$jobId]);
 $job = $stmt->fetch();
 
 if (!$job) {
-    setFlash('danger', 'Lowongan tidak ditemukan atau sudah ditutup.');
+    setFlash('danger', 'Lowongan tidak ditemukan, sudah ditutup, atau sudah melewati batas pendaftaran.');
     header('Location: ' . BASE_URL . '/user/jobs.php');
     exit;
 }
@@ -150,7 +150,7 @@ require_once __DIR__ . '/../includes/header.php';
                                 <div class="text-muted small">
                                     <i class="bi bi-building me-1"></i> <?= htmlspecialchars($job['nama_company']) ?> &bull; 
                                     <i class="bi bi-diagram-3 me-1 ms-2"></i> <?= htmlspecialchars($job['nama_divisi']) ?> &bull; 
-                                    <i class="bi bi-geo-alt me-1 ms-2"></i> <?= htmlspecialchars($job['location']) ?>
+                                    <i class="bi bi-laptop me-1 ms-2"></i> <?= htmlspecialchars($job['sistem_kerja']) ?>
                                 </div>
                             </div>
                             <div class="col-md-5 mt-3 mt-md-0 text-md-end border-start-md">
@@ -218,7 +218,7 @@ require_once __DIR__ . '/../includes/header.php';
                                     </div>
                                     <div class="col-md-6">
                                         <span class="text-muted d-block">Pendidikan Terakhir:</span>
-                                        <strong><?= htmlspecialchars($user['pendidikan_terakhir']) ?> (Lulus <?= $user['tahun_lulus'] ?>)</strong>
+                                        <strong><?= htmlspecialchars($user['pendidikan_terakhir']) ?>, <?= htmlspecialchars($user['institusi']) ?> (<?= $user['status_pendidikan'] === 'Lulus' ? 'Lulus' : 'Perkiraan lulus' ?> <?= $user['tahun_lulus'] ?>)</strong>
                                     </div>
                                     <div class="col-md-6">
                                         <span class="text-muted d-block">Alamat Domisili:</span>

@@ -74,7 +74,7 @@ require_once __DIR__ . '/includes/navbar.php';
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-2 reveal-fade-up">
             <div>
                 <h2 class="fw-bold mb-1">Lowongan Pekerjaan IT Terbaru</h2>
-                <p class="text-muted mb-0">Eksplorasi posisi Full-Time, Magang, dan Management Trainee di <?= htmlspecialchars($companyName) ?>.</p>
+                <p class="text-muted mb-0">Eksplorasi posisi Full-Time, Magang, Management Trainee, dan PKL di <?= htmlspecialchars($companyName) ?>.</p>
             </div>
             <a href="<?= BASE_URL ?>/jobs.php" class="btn btn-outline-primary">
                 Lihat Semua Lowongan <i class="bi bi-arrow-right ms-1"></i>
@@ -114,7 +114,7 @@ require_once __DIR__ . '/includes/navbar.php';
                         </p>
                         <div class="pt-3 border-top d-flex justify-content-between align-items-center">
                             <div class="small text-muted">
-                                <i class="bi bi-geo-alt me-1"></i> <?= htmlspecialchars($job['location']) ?>
+                                <i class="bi bi-laptop me-1"></i> <?= htmlspecialchars($job['sistem_kerja']) ?>
                             </div>
                             <a href="<?= BASE_URL ?>/job_detail.php?id=<?= $job['id_job'] ?>" class="btn btn-sm btn-primary">
                                 Detail Lowongan

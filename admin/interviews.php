@@ -10,7 +10,17 @@ $activeSidebar = 'interviews';
 if (isset($_GET['set_status']) && isset($_GET['id'])) {
     $itwId = (int)$_GET['id'];
     $st = trim($_GET['set_status']);
-    if (in_array($st, ['Scheduled', 'Completed', 'Cancelled'])) {
+    // Cari lowongan dari interview ini untuk mengecek hak PIC
+    $stmtJob = $pdo->prepare("
+        SELECT a.id_job FROM interview i JOIN application a ON a.id_application = i.id_application
+        WHERE i.id_interview = ?
+    ");
+    $stmtJob->execute([$itwId]);
+    $jobId = (int)$stmtJob->fetchColumn();
+
+    if (!canProcessJob($pdo, $jobId)) {
+        setFlash('danger', 'Hanya PIC lowongan atau kepala HR yang boleh mengubah status interview ini.');
+    } elseif (in_array($st, ['Scheduled', 'Completed', 'Cancelled'])) {
         $stmt = $pdo->prepare("UPDATE interview SET status = ? WHERE id_interview = ?");
         $stmt->execute([$st, $itwId]);
         setFlash('success', "Status sesi interview berhasil diperbarui menjadi {$st}.");
@@ -22,17 +32,19 @@ if (isset($_GET['set_status']) && isset($_GET['id'])) {
 // Fetch interviews
 $stmt = $pdo->query("
     SELECT i.*, a.id_application, u.nama as nama_kandidat, u.email as email_kandidat, u.no_telepon as telp_kandidat,
-           j.nama_job, c.nama_company, itw.nama as nama_interviewer
+           j.nama_job, j.pic_nik, c.nama_company, COALESCE(itw.nama, 'HR (akun sudah dihapus)') as nama_interviewer
     FROM interview i
     JOIN application a ON i.id_application = a.id_application
     JOIN user_all u ON a.nik = u.nik
     JOIN job j ON a.id_job = j.id_job
     JOIN division d ON j.id_division = d.id_division
     JOIN company c ON d.id_company = c.id_company
-    JOIN interviewer itw ON i.id_interviewer = itw.id_interviewer
+    LEFT JOIN user_all itw ON itw.nik = i.interviewer_nik   -- pewawancara = akun HR
+    LEFT JOIN staff itws ON itws.nik = i.interviewer_nik
     ORDER BY i.tanggal DESC, i.waktu DESC
 ");
 $interviews = $stmt->fetchAll();
+$myNik = currentUser()['nik'];
 
 require_once __DIR__ . '/../includes/header.php';
 ?>
@@ -111,8 +123,12 @@ require_once __DIR__ . '/../includes/header.php';
                                             <span class="badge <?= $itw['status'] === 'Scheduled' ? 'bg-warning text-dark' : ($itw['status'] === 'Completed' ? 'bg-success' : 'bg-secondary') ?>">
                                                 <?= $itw['status'] ?>
                                             </span>
+                                            <?php if ($itw['nilai'] !== null): ?>
+                                                <small class="d-block text-muted">Nilai <?= (int)$itw['nilai'] ?> &bull; <?= htmlspecialchars($itw['rekomendasi']) ?></small>
+                                            <?php endif; ?>
                                         </td>
                                         <td class="text-end">
+                                            <?php if (isKepalaHr() || $itw['pic_nik'] === $myNik): ?>
                                             <div class="dropdown d-inline-block">
                                                 <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
                                                     Status
@@ -123,6 +139,7 @@ require_once __DIR__ . '/../includes/header.php';
                                                     <li><a class="dropdown-item" href="<?= BASE_URL ?>/admin/interviews.php?set_status=Scheduled&id=<?= $itw['id_interview'] ?>">Jadwalkan Ulang (Scheduled)</a></li>
                                                 </ul>
                                             </div>
+                                            <?php endif; ?>
                                             <a href="<?= BASE_URL ?>/admin/application_detail.php?id=<?= $itw['id_application'] ?>" class="btn btn-sm btn-primary ms-1">
                                                 Dossier
                                             </a>

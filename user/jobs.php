@@ -26,7 +26,7 @@ $sql = "
 $params = [$nik];
 
 if ($search !== '') {
-    $sql .= " AND (j.nama_job LIKE ? OR j.deskripsi LIKE ? OR j.location LIKE ?)";
+    $sql .= " AND (j.nama_job LIKE ? OR j.deskripsi LIKE ? OR j.sistem_kerja LIKE ?)";
     $term = "%{$search}%";
     $params[] = $term;
     $params[] = $term;
@@ -101,6 +101,7 @@ require_once __DIR__ . '/../includes/header.php';
                             <option value="Kerja" <?= $jobType === 'Kerja' ? 'selected' : '' ?>>Kerja (Full-Time)</option>
                             <option value="Magang" <?= $jobType === 'Magang' ? 'selected' : '' ?>>Magang (Internship)</option>
                             <option value="Management Trainee" <?= $jobType === 'Management Trainee' ? 'selected' : '' ?>>Management Trainee (MT)</option>
+                            <option value="PKL" <?= $jobType === 'PKL' ? 'selected' : '' ?>>PKL (Praktik Kerja Lapangan)</option>
                         </select>
                     </div>
                     <div class="col-12 d-flex justify-content-end gap-2 pt-2">
@@ -159,7 +160,7 @@ require_once __DIR__ . '/../includes/header.php';
                                 </p>
                                 <div class="pt-3 border-top">
                                     <div class="d-flex justify-content-between text-muted small mb-3">
-                                        <span><i class="bi bi-geo-alt me-1"></i> <?= htmlspecialchars($job['location']) ?></span>
+                                        <span><i class="bi bi-laptop me-1"></i> <?= htmlspecialchars($job['sistem_kerja']) ?></span>
                                         <span class="text-success fw-bold"><?= formatRupiah($job['salary_min']) ?></span>
                                     </div>
                                     <div class="d-flex justify-content-between align-items-center">
@@ -170,7 +171,7 @@ require_once __DIR__ . '/../includes/header.php';
                                             <a href="<?= BASE_URL ?>/user/tracking.php?id=<?= $job['my_app_id'] ?>" class="btn btn-sm btn-warning text-dark fw-bold">
                                                 <i class="bi bi-clock-history me-1"></i> Tracking
                                             </a>
-                                        <?php elseif ($job['status'] === 'Open'): ?>
+                                        <?php elseif ($job['status'] === 'Open' && $job['deadline'] >= date('Y-m-d')): ?>
                                             <a href="<?= BASE_URL ?>/user/apply.php?job_id=<?= $job['id_job'] ?>" class="btn btn-sm btn-primary">
                                                 Lamar Posisi
                                             </a>

@@ -12,7 +12,7 @@ $activeSidebar = 'applications';
 $statusFilter = trim($_GET['status'] ?? '');
 
 $sql = "
-    SELECT a.*, j.nama_job, j.job_type, j.location, c.nama_company, d.nama_divisi,
+    SELECT a.*, j.nama_job, j.job_type, j.sistem_kerja, c.nama_company, d.nama_divisi,
            (SELECT COUNT(*) FROM interview i WHERE i.id_application = a.id_application AND i.status = 'Scheduled') as has_interview,
            (SELECT id_loa FROM loa l WHERE l.id_application = a.id_application) as loa_id
     FROM application a

@@ -29,6 +29,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_save_division'
     exit;
 }
 
+// Handle ganti PIC lowongan (admin sebagai cadangan jika kepala HR berhalangan)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_set_pic'])) {
+    $idJob = (int)($_POST['id_job'] ?? 0);
+    $picNik = trim($_POST['pic_nik'] ?? '') ?: null;
+    $stmt = $pdo->prepare("UPDATE job SET pic_nik = ? WHERE id_job = ?");
+    $stmt->execute([$picNik, $idJob]);
+    setFlash('success', 'PIC lowongan berhasil diperbarui.');
+    header('Location: ' . BASE_URL . '/admin/divisions.php');
+    exit;
+}
+
 // Handle Delete
 if (isset($_GET['delete'])) {
     $delId = (int)$_GET['delete'];
@@ -54,13 +65,20 @@ $divisions = $pdo->query("
 // Semua lowongan, dikelompokkan per divisi (ditampilkan saat tombol "N Lowongan" diklik)
 $jobsByDivision = [];
 $allJobs = $pdo->query("
-    SELECT id_job, id_division, nama_job, job_type, location, deadline, status
+    SELECT id_job, id_division, pic_nik, nama_job, job_type, sistem_kerja, deadline, status
     FROM job
     ORDER BY created_at DESC
 ")->fetchAll();
 foreach ($allJobs as $job) {
     $jobsByDivision[$job['id_division']][] = $job;
 }
+
+// Daftar akun HR untuk pilihan PIC
+$hrList = $pdo->query("
+    SELECT u.nik, u.nama FROM user_all u
+    WHERE u.role = 'hr'
+    ORDER BY u.nama ASC
+")->fetchAll();
 
 require_once __DIR__ . '/../includes/header.php';
 ?>
@@ -153,11 +171,25 @@ require_once __DIR__ . '/../includes/header.php';
                                                             <div class="fw-semibold text-dark"><?= htmlspecialchars($job['nama_job']) ?></div>
                                                             <small class="text-muted">
                                                                 <?= htmlspecialchars($job['job_type']) ?> &bull;
-                                                                <?= htmlspecialchars($job['location']) ?> &bull;
+                                                                <?= htmlspecialchars($job['sistem_kerja']) ?> &bull;
                                                                 Batas: <?= formatTanggalIndo($job['deadline']) ?>
                                                             </small>
                                                         </div>
-                                                        <span class="badge <?= $job['status'] === 'Open' ? 'bg-success' : 'bg-secondary' ?>"><?= $job['status'] ?></span>
+                                                        <div class="d-flex align-items-center gap-2">
+                                                            <span class="badge <?= $job['status'] === 'Open' ? 'bg-success' : 'bg-secondary' ?>"><?= $job['status'] ?></span>
+                                                            <!-- Ganti PIC (cadangan untuk admin) -->
+                                                            <form method="POST" action="<?= BASE_URL ?>/admin/divisions.php" class="d-flex gap-1">
+                                                                <input type="hidden" name="action_set_pic" value="1">
+                                                                <input type="hidden" name="id_job" value="<?= $job['id_job'] ?>">
+                                                                <select name="pic_nik" class="form-select form-select-sm" style="width: 170px;">
+                                                                    <option value="">Belum ada PIC</option>
+                                                                    <?php foreach ($hrList as $hr): ?>
+                                                                        <option value="<?= $hr['nik'] ?>" <?= $job['pic_nik'] === $hr['nik'] ? 'selected' : '' ?>><?= htmlspecialchars($hr['nama']) ?></option>
+                                                                    <?php endforeach; ?>
+                                                                </select>
+                                                                <button type="submit" class="btn btn-sm btn-outline-primary">Simpan</button>
+                                                            </form>
+                                                        </div>
                                                     </div>
                                                 <?php endforeach; ?>
                                             <?php endif; ?>

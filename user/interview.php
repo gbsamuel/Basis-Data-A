@@ -11,13 +11,14 @@ $activeSidebar = 'interview';
 
 $stmt = $pdo->prepare("
     SELECT i.*, j.nama_job, j.job_type, c.nama_company, c.alamat as alamat_company, d.nama_divisi,
-           itw.nama as nama_interviewer, itw.position as jabatan_interviewer, itw.email as email_interviewer
+           COALESCE(itw.nama, 'HR (akun sudah dihapus)') as nama_interviewer, itws.jabatan as jabatan_interviewer, itw.email as email_interviewer
     FROM interview i
     JOIN application a ON i.id_application = a.id_application
     JOIN job j ON a.id_job = j.id_job
     JOIN division d ON j.id_division = d.id_division
     JOIN company c ON d.id_company = c.id_company
-    JOIN interviewer itw ON i.id_interviewer = itw.id_interviewer
+    LEFT JOIN user_all itw ON itw.nik = i.interviewer_nik   -- pewawancara = akun HR
+    LEFT JOIN staff itws ON itws.nik = i.interviewer_nik
     WHERE a.nik = ?
     ORDER BY i.tanggal DESC, i.waktu DESC
 ");
@@ -80,7 +81,7 @@ require_once __DIR__ . '/../includes/header.php';
                                         <i class="bi bi-clock me-2 text-primary"></i> <strong>Waktu:</strong> <?= substr($itw['waktu'], 0, 5) ?> WIB
                                     </div>
                                     <div class="mb-2">
-                                        <i class="bi bi-person-badge me-2 text-primary"></i> <strong>Pewawancara:</strong> <?= htmlspecialchars($itw['nama_interviewer']) ?> (<?= htmlspecialchars($itw['jabatan_interviewer']) ?>)
+                                        <i class="bi bi-person-badge me-2 text-primary"></i> <strong>Pewawancara:</strong> <?= htmlspecialchars($itw['nama_interviewer']) ?> (<?= htmlspecialchars($itw['jabatan_interviewer'] ?? 'HR') ?>)
                                     </div>
                                     <div class="mb-2">
                                         <i class="bi bi-laptop me-2 text-primary"></i> <strong>Tipe:</strong> <?= htmlspecialchars($itw['type']) ?>

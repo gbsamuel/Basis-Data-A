@@ -11,14 +11,16 @@ $appId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 // Fetch application dossier
 $stmt = $pdo->prepare("
     SELECT a.*, 
-           u.nama as nama_kandidat, u.nik, u.email as email_kandidat, u.no_telepon, u.tanggal_lahir,
-           u.pendidikan_terakhir, u.tahun_lulus, u.alamat as alamat_kandidat,
-           j.nama_job, j.job_type, j.location, j.salary_min, j.salary_max, j.id_job,
+           u.nama as nama_kandidat, u.nik, u.email as email_kandidat, u.no_telepon, p.tanggal_lahir,
+           CONCAT(p.jenjang_pendidikan, ' ', p.jurusan) AS pendidikan_terakhir, p.institusi, p.status_pendidikan, p.tahun_lulus, p.alamat as alamat_kandidat,
+           j.nama_job, j.job_type, j.sistem_kerja, j.salary_min, j.salary_max, j.id_job, j.id_division, j.pic_nik,
+           (SELECT nama FROM user_all WHERE nik = j.pic_nik) AS nama_pic,
            c.id_company, c.nama_company, c.alamat as alamat_company, c.email_corporate,
            d.nama_divisi,
            (SELECT id_loa FROM loa l WHERE l.id_application = a.id_application) as loa_id
     FROM application a
     JOIN user_all u ON a.nik = u.nik
+    JOIN pelamar p ON p.nik = u.nik
     JOIN job j ON a.id_job = j.id_job
     JOIN division d ON j.id_division = d.id_division
     JOIN company c ON d.id_company = c.id_company
@@ -33,6 +35,15 @@ if (!$app) {
     exit;
 }
 
+// Hanya PIC lowongan ini atau kepala HR yang boleh memproses lamaran.
+// HR lain tetap bisa melihat, tapi semua form di bawah ditolak.
+$canProcess = canProcessJob($pdo, $app['id_job']);
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$canProcess) {
+    setFlash('danger', 'Lowongan ini dipegang oleh ' . ($app['nama_pic'] ?? 'HR lain') . '. Hanya PIC atau kepala HR yang boleh memproses lamaran ini.');
+    header('Location: ' . BASE_URL . '/admin/application_detail.php?id=' . $appId);
+    exit;
+}
+
 // Handle Update Recruitment Status
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_update_status'])) {
     $newStatus = trim($_POST['new_status'] ?? '');
@@ -41,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_update_status'
     $allowedStatuses = [
         'Applied', 'HR Review', 'Document Screening', 
         'Interview Scheduling', 'Interview', 'Final Decision', 
-        'Accepted', 'Rejected', 'Talent Pool'
+        'Accepted', 'Rejected'
     ];
 
     if (in_array($newStatus, $allowedStatuses)) {
@@ -50,9 +61,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_update_status'
         $stmtUpdate->execute([$newStatus, $appId]);
 
         // 2. Record stage history in relational table CANDIDATE_STAGE_HISTORY
+        $addToPool = $newStatus === 'Rejected' && isset($_POST['add_talent_pool']);
+        // Catatan riwayat terlihat oleh pelamar, jadi info talent pool (data internal HR) tidak ditulis di sini
         recordStageHistory($pdo, $appId, $newStatus, 'Completed', $notes, $adminNik);
 
-        // 3. Automated action if Accepted => generate LOA if not exists
+        // 3. Jika ditolak dan dicentang "Masukkan ke Talent Pool": simpan / perbarui baris talent_pool.
+        //    Satu pelamar hanya punya satu baris (nik UNIQUE), jadi jika sudah ada, barisnya diperbarui.
+        if ($addToPool) {
+            $reason = trim($_POST['talent_reason'] ?? '') ?: 'Kandidat potensial untuk lowongan berikutnya.';
+            $stmtPool = $pdo->prepare("
+                INSERT INTO talent_pool (nik, source_application, reason, status, added_by, added_at)
+                VALUES (?, ?, ?, 'Available', ?, NOW())
+                ON DUPLICATE KEY UPDATE
+                    source_application = VALUES(source_application),
+                    reason = VALUES(reason),
+                    status = 'Available',
+                    added_by = VALUES(added_by),
+                    added_at = NOW()
+            ");
+            $stmtPool->execute([$app['nik'], $appId, $reason, $adminNik]);
+        }
+
+        // 4. Automated action if Accepted => generate LOA if not exists
         if ($newStatus === 'Accepted') {
             $stmtLoaCheck = $pdo->prepare("SELECT id_loa FROM loa WHERE id_application = ?");
             $stmtLoaCheck->execute([$appId]);
@@ -81,7 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_update_status'
 
 // Handle Schedule Interview from this page
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_schedule_interview'])) {
-    $idInterviewer = (int)($_POST['id_interviewer'] ?? 0);
+    $interviewerNik = trim($_POST['interviewer_nik'] ?? '');   // NIK akun HR yang mewawancarai
     $tanggal = trim($_POST['tanggal'] ?? '');
     $waktu = trim($_POST['waktu'] ?? '');
     $type = trim($_POST['type'] ?? 'Online');
@@ -89,13 +119,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_schedule_inter
     $meetingLink = trim($_POST['meeting_link'] ?? '');
     $itwNotes = trim($_POST['notes'] ?? '');
 
-    if ($idInterviewer > 0 && !empty($tanggal) && !empty($waktu)) {
+    if (!empty($interviewerNik) && !empty($tanggal) && !empty($waktu)) {
         // Insert interview
         $stmtItw = $pdo->prepare("
-            INSERT INTO interview (id_application, id_interviewer, tanggal, waktu, type, location, meeting_link, notes, status, created_at)
+            INSERT INTO interview (id_application, interviewer_nik, tanggal, waktu, type, location, meeting_link, notes, status, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Scheduled', NOW())
         ");
-        $stmtItw->execute([$appId, $idInterviewer, $tanggal, $waktu, $type, $location, $meetingLink, $itwNotes]);
+        $stmtItw->execute([$appId, $interviewerNik, $tanggal, $waktu, $type, $location, $meetingLink, $itwNotes]);
 
         // Auto update application status to 'Interview'
         $pdo->prepare("UPDATE application SET current_status = 'Interview', updated_at = NOW() WHERE id_application = ?")->execute([$appId]);
@@ -107,6 +137,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_schedule_inter
     } else {
         setFlash('danger', 'Pewawancara, tanggal, dan waktu wajib diisi.');
     }
+}
+
+// Handle hasil wawancara (nilai 1-100 dan rekomendasi pewawancara)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_interview_result'])) {
+    $idInterview = (int)($_POST['id_interview'] ?? 0);
+    $nilai = (int)($_POST['nilai'] ?? 0);
+    $rekomendasi = trim($_POST['rekomendasi'] ?? '');
+
+    if ($nilai >= 1 && $nilai <= 100 && in_array($rekomendasi, ['Lanjut', 'Tidak Lanjut', 'Talent Pool'])) {
+        $stmt = $pdo->prepare("
+            UPDATE interview SET nilai = ?, rekomendasi = ?, status = 'Completed'
+            WHERE id_interview = ? AND id_application = ?
+        ");
+        $stmt->execute([$nilai, $rekomendasi, $idInterview, $appId]);
+        setFlash('success', 'Hasil wawancara berhasil disimpan.');
+    } else {
+        setFlash('danger', 'Nilai harus 1-100 dan rekomendasi wajib dipilih.');
+    }
+    header('Location: ' . BASE_URL . '/admin/application_detail.php?id=' . $appId);
+    exit;
 }
 
 // Skills match calculation details
@@ -125,9 +175,10 @@ $histories = $stmtHist->fetchAll();
 
 // Fetch scheduled interview
 $stmtItwData = $pdo->prepare("
-    SELECT i.*, itw.nama as nama_interviewer
+    SELECT i.*, COALESCE(itw.nama, 'HR (akun sudah dihapus)') as nama_interviewer
     FROM interview i
-    JOIN interviewer itw ON i.id_interviewer = itw.id_interviewer
+    LEFT JOIN user_all itw ON itw.nik = i.interviewer_nik   -- pewawancara = akun HR
+    LEFT JOIN staff itws ON itws.nik = i.interviewer_nik
     WHERE i.id_application = ?
     ORDER BY i.created_at DESC
     LIMIT 1
@@ -135,10 +186,19 @@ $stmtItwData = $pdo->prepare("
 $stmtItwData->execute([$appId]);
 $existingInterview = $stmtItwData->fetch();
 
-// Interviewers list for modal
-$interviewers = $pdo->prepare("SELECT * FROM interviewer WHERE id_company = ? ORDER BY nama ASC");
-$interviewers->execute([$app['id_company']]);
-$interviewersList = $interviewers->fetchAll();
+// Daftar pewawancara = semua akun HR (data diambil dari user_all + staff lewat NIK)
+$interviewersList = $pdo->query("
+    SELECT u.nik, u.nama, s.jabatan
+    FROM user_all u
+    JOIN staff s ON s.nik = u.nik
+    WHERE u.role = 'hr'
+    ORDER BY u.nama ASC
+")->fetchAll();
+
+// Apakah pelamar ini sudah ada di talent pool?
+$stmtPoolCheck = $pdo->prepare("SELECT status FROM talent_pool WHERE nik = ?");
+$stmtPoolCheck->execute([$app['nik']]);
+$poolStatus = $stmtPoolCheck->fetchColumn();
 
 $pageTitle = 'Dossier Seleksi: ' . htmlspecialchars($app['nama_kandidat']) . ' - SIREKA Admin';
 $activeSidebar = 'applications';
@@ -180,7 +240,7 @@ require_once __DIR__ . '/../includes/header.php';
                                 </div>
                                 <div>
                                     <h4 class="fw-bold text-dark mb-0"><?= htmlspecialchars($app['nama_kandidat']) ?></h4>
-                                    <span class="text-muted small">NIK: <?= htmlspecialchars($app['nik']) ?> &bull; <?= htmlspecialchars($app['pendidikan_terakhir']) ?> (Lulus <?= $app['tahun_lulus'] ?>)</span>
+                                    <span class="text-muted small">NIK: <?= htmlspecialchars($app['nik']) ?> &bull; <?= htmlspecialchars($app['pendidikan_terakhir']) ?>, <?= htmlspecialchars($app['institusi']) ?> (<?= $app['status_pendidikan'] === 'Lulus' ? 'Lulus' : 'Perkiraan lulus' ?> <?= $app['tahun_lulus'] ?>)</span>
                                 </div>
                             </div>
                             <div>
@@ -297,14 +357,25 @@ require_once __DIR__ . '/../includes/header.php';
                         <div class="mb-3">
                             <span class="small text-muted d-block mb-1">Status Saat Ini:</span>
                             <?= getStatusBadge($app['current_status']) ?>
+                            <?php if ($poolStatus): ?>
+                                <span class="badge bg-purple text-white ms-1"><i class="bi bi-star-fill me-1"></i>Talent Pool (<?= htmlspecialchars($poolStatus) ?>)</span>
+                            <?php endif; ?>
+                        </div>
+                        <div class="small text-muted mb-3">
+                            PIC lowongan: <strong><?= htmlspecialchars($app['nama_pic'] ?? 'Belum ada PIC') ?></strong>
                         </div>
 
+                        <?php if (!$canProcess): ?>
+                            <div class="alert alert-secondary small mb-0">
+                                <i class="bi bi-lock me-1"></i> Anda hanya bisa melihat lamaran ini. Yang boleh memproses: PIC lowongan atau kepala HR.
+                            </div>
+                        <?php else: ?>
                         <form method="POST" action="<?= BASE_URL ?>/admin/application_detail.php?id=<?= $appId ?>">
                             <input type="hidden" name="action_update_status" value="1">
 
                             <div class="mb-3">
                                 <label class="form-label small fw-semibold">Pilih Status Baru <span class="text-danger">*</span></label>
-                                <select name="new_status" class="form-select" required>
+                                <select name="new_status" id="newStatus" class="form-select" required>
                                     <option value="Applied" <?= $app['current_status'] === 'Applied' ? 'selected' : '' ?>>Applied</option>
                                     <option value="HR Review" <?= $app['current_status'] === 'HR Review' ? 'selected' : '' ?>>HR Review</option>
                                     <option value="Document Screening" <?= $app['current_status'] === 'Document Screening' ? 'selected' : '' ?>>Document Screening</option>
@@ -321,10 +392,20 @@ require_once __DIR__ . '/../includes/header.php';
                                 <textarea name="notes" rows="3" class="form-control" placeholder="Tuliskan catatan internal atau alasan keputusan..."></textarea>
                             </div>
 
+                            <!-- Muncul hanya saat status Rejected dipilih -->
+                            <div id="talentPoolBox" class="mb-3 p-3 bg-light rounded-3 border d-none">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" name="add_talent_pool" id="addTalentPool" value="1">
+                                    <label class="form-check-label small fw-semibold" for="addTalentPool">Masukkan ke Talent Pool</label>
+                                </div>
+                                <textarea name="talent_reason" rows="2" class="form-control form-control-sm" placeholder="Alasan kandidat disimpan, cth: kuota penuh, portofolio kuat"></textarea>
+                            </div>
+
                             <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm">
                                 <i class="bi bi-arrow-repeat me-1"></i> Simpan Status Baru
                             </button>
                         </form>
+                        <?php endif; ?>
 
                         <?php if ($app['current_status'] === 'Accepted' && !empty($app['loa_id'])): ?>
                             <div class="mt-3 pt-3 border-top">
@@ -352,6 +433,9 @@ require_once __DIR__ . '/../includes/header.php';
                                 <div class="mb-1"><i class="bi bi-calendar-check me-1 text-primary"></i> <?= formatTanggalIndo($existingInterview['tanggal']) ?> (<?= substr($existingInterview['waktu'], 0, 5) ?> WIB)</div>
                                 <div class="mb-1"><i class="bi bi-person me-1 text-primary"></i> <?= htmlspecialchars($existingInterview['nama_interviewer']) ?></div>
                                 <div class="mb-2"><i class="bi bi-laptop me-1 text-primary"></i> Tipe: <?= $existingInterview['type'] ?></div>
+                                <?php if ($existingInterview['nilai'] !== null): ?>
+                                    <div class="mb-2"><i class="bi bi-clipboard-check me-1 text-primary"></i> Nilai: <strong><?= (int)$existingInterview['nilai'] ?></strong> &bull; Rekomendasi: <strong><?= htmlspecialchars($existingInterview['rekomendasi']) ?></strong></div>
+                                <?php endif; ?>
                                 <?php if (!empty($existingInterview['meeting_link'])): ?>
                                     <a href="<?= htmlspecialchars($existingInterview['meeting_link']) ?>" target="_blank" class="btn btn-sm btn-outline-success w-100">
                                         <i class="bi bi-box-arrow-up-right me-1"></i> Buka Tautan Meeting
@@ -360,9 +444,32 @@ require_once __DIR__ . '/../includes/header.php';
                             </div>
                         <?php endif; ?>
 
-                        <button class="btn btn-outline-warning text-dark w-100 fw-semibold" data-bs-toggle="modal" data-bs-target="#interviewModal">
-                            <i class="bi bi-calendar-plus me-1"></i> <?= $existingInterview ? 'Jadwalkan Ulang Interview' : 'Jadwalkan Interview' ?>
-                        </button>
+                        <?php if ($canProcess): ?>
+                            <?php if ($existingInterview): ?>
+                                <!-- Input hasil wawancara dari pewawancara -->
+                                <form method="POST" action="<?= BASE_URL ?>/admin/application_detail.php?id=<?= $appId ?>" class="row g-2 mb-3">
+                                    <input type="hidden" name="action_interview_result" value="1">
+                                    <input type="hidden" name="id_interview" value="<?= $existingInterview['id_interview'] ?>">
+                                    <div class="col-5">
+                                        <input type="number" name="nilai" min="1" max="100" required class="form-control form-control-sm" placeholder="Nilai 1-100" value="<?= htmlspecialchars((string)($existingInterview['nilai'] ?? '')) ?>">
+                                    </div>
+                                    <div class="col-7">
+                                        <select name="rekomendasi" required class="form-select form-select-sm">
+                                            <option value="">Rekomendasi...</option>
+                                            <?php foreach (['Lanjut', 'Tidak Lanjut', 'Talent Pool'] as $rek): ?>
+                                                <option value="<?= $rek ?>" <?= ($existingInterview['rekomendasi'] ?? '') === $rek ? 'selected' : '' ?>><?= $rek ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <div class="col-12">
+                                        <button type="submit" class="btn btn-sm btn-outline-primary w-100">Simpan Hasil Wawancara</button>
+                                    </div>
+                                </form>
+                            <?php endif; ?>
+                            <button class="btn btn-outline-warning text-dark w-100 fw-semibold" data-bs-toggle="modal" data-bs-target="#interviewModal">
+                                <i class="bi bi-calendar-plus me-1"></i> <?= $existingInterview ? 'Jadwalkan Ulang Interview' : 'Jadwalkan Interview' ?>
+                            </button>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -383,11 +490,11 @@ require_once __DIR__ . '/../includes/header.php';
                 <div class="modal-body row g-3">
                     <div class="col-12">
                         <label class="form-label small fw-semibold">Pilih Pewawancara (Interviewer) <span class="text-danger">*</span></label>
-                        <select name="id_interviewer" required class="form-select">
+                        <select name="interviewer_nik" required class="form-select">
                             <option value="">Pilih Pewawancara...</option>
                             <?php foreach ($interviewersList as $itw): ?>
-                                <option value="<?= $itw['id_interviewer'] ?>">
-                                    <?= htmlspecialchars($itw['nama']) ?> (<?= htmlspecialchars($itw['position']) ?>)
+                                <option value="<?= htmlspecialchars($itw['nik']) ?>">
+                                    <?= htmlspecialchars($itw['nama']) ?> (<?= htmlspecialchars($itw['jabatan']) ?>)
                                 </option>
                             <?php endforeach; ?>
                         </select>
@@ -428,5 +535,18 @@ require_once __DIR__ . '/../includes/header.php';
         </div>
     </div>
 </div>
+
+<script>
+    // Kotak "Masukkan ke Talent Pool" hanya ditampilkan saat status Rejected dipilih
+    const statusSelect = document.getElementById('newStatus');
+    if (statusSelect) {
+        const talentBox = document.getElementById('talentPoolBox');
+        function toggleTalentBox() {
+            talentBox.classList.toggle('d-none', statusSelect.value !== 'Rejected');
+        }
+        statusSelect.addEventListener('change', toggleTalentBox);
+        toggleTalentBox();
+    }
+</script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

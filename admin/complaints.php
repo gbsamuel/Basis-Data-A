@@ -15,10 +15,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_respond_compla
     if ($idComplaint > 0 && !empty($response)) {
         $stmt = $pdo->prepare("
             UPDATE complaint 
-            SET admin_response = ?, status = ?, resolved_at = NOW() 
+            SET admin_response = ?, status = ?, resolved_at = NOW(), responded_by = ? 
             WHERE id_complaint = ?
         ");
-        $stmt->execute([$response, $status, $idComplaint]);
+        $stmt->execute([$response, $status, currentUser()['nik'], $idComplaint]);   // responded_by = admin yang membalas
         setFlash('success', 'Tanggapan resmi berhasil dikirimkan ke pelamar dan status tiket diperbarui.');
     } else {
         setFlash('danger', 'Tanggapan wajib diisi.');
@@ -39,7 +39,7 @@ $complaints = $stmt->fetchAll();
 $avgRating = $pdo->query("SELECT AVG(rating) FROM feedback")->fetchColumn();
 $totalFeedback = $pdo->query("SELECT COUNT(*) FROM feedback")->fetchColumn();
 $feedbacks = $pdo->query("
-    SELECT f.*, u.nama as nama_kandidat, u.email, u.pendidikan_terakhir
+    SELECT f.*, u.nama as nama_kandidat, u.email
     FROM feedback f
     JOIN user_all u ON f.nik = u.nik
     ORDER BY f.created_at DESC

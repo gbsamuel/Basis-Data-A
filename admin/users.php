@@ -13,36 +13,73 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_add_hr'])) {
     $nama       = trim($_POST['nama'] ?? '');
     $email      = trim($_POST['email'] ?? '');
     $noTelepon  = trim($_POST['no_telepon'] ?? '');
-    $tglLahir   = trim($_POST['tanggal_lahir'] ?? '');
-    $pendidikan = trim($_POST['pendidikan_terakhir'] ?? '');
-    $tahunLulus = (int)($_POST['tahun_lulus'] ?? 0);
-    $alamat     = trim($_POST['alamat'] ?? '');
     $jabatan    = trim($_POST['jabatan'] ?? 'HR Recruiter');
+    $isKepala   = isset($_POST['is_kepala_hr']) ? 1 : 0;
     $password   = $_POST['password'] ?? '';
 
     // Cek NIK atau email sudah dipakai atau belum
     $stmtCheck = $pdo->prepare("SELECT COUNT(*) FROM user_all WHERE nik = ? OR email = ?");
     $stmtCheck->execute([$nik, $email]);
 
-    if (empty($nik) || empty($nama) || empty($email) || empty($noTelepon) || empty($tglLahir) || empty($pendidikan) || $tahunLulus <= 0) {
+    if (empty($nik) || empty($nama) || empty($email) || empty($noTelepon) || empty($jabatan)) {
         setFlash('danger', 'Semua kolom bertanda * wajib diisi.');
+    } elseif (strlen($nik) !== 16 || !ctype_digit($nik)) {
+        setFlash('danger', 'NIK harus 16 digit angka.');
     } elseif (strlen($password) < 6) {
         setFlash('danger', 'Password minimal 6 karakter.');
     } elseif ($stmtCheck->fetchColumn() > 0) {
         setFlash('danger', 'NIK atau email sudah terdaftar.');
     } else {
-        // 1. Simpan akun ke user_all dengan role 'hr'
+        // Akun HR = 1 baris di user_all (role 'hr') + 1 baris di staff (jabatan & penanda kepala HR)
+        $pdo->beginTransaction();
         $stmt = $pdo->prepare("
-            INSERT INTO user_all (nik, nama, email, no_telepon, tanggal_lahir, pendidikan_terakhir, tahun_lulus, alamat, password, role)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'hr')
+            INSERT INTO user_all (nik, nama, email, password, no_telepon, role)
+            VALUES (?, ?, ?, ?, ?, 'hr')
         ");
-        $stmt->execute([$nik, $nama, $email, $noTelepon, $tglLahir, $pendidikan, $tahunLulus, $alamat, password_hash($password, PASSWORD_DEFAULT)]);
+        $stmt->execute([$nik, $nama, $email, password_hash($password, PASSWORD_DEFAULT), $noTelepon]);
 
-        // 2. Simpan jabatannya ke company_admin (data staf perusahaan)
-        $stmtStaff = $pdo->prepare("INSERT INTO company_admin (id_company, nik, position) VALUES (1, ?, ?)");
-        $stmtStaff->execute([$nik, $jabatan]);
+        $stmtStaff = $pdo->prepare("INSERT INTO staff (nik, jabatan, is_kepala_hr) VALUES (?, ?, ?)");
+        $stmtStaff->execute([$nik, $jabatan, $isKepala]);
+        $pdo->commit();
 
         setFlash('success', 'Akun HR untuk ' . $nama . ' berhasil dibuat.');
+    }
+    header('Location: ' . BASE_URL . '/admin/users.php');
+    exit;
+}
+
+// Handle jadikan / cabut status kepala HR (hanya untuk akun HR)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_toggle_kepala'])) {
+    $hrNik = trim($_POST['nik'] ?? '');
+    $stmt = $pdo->prepare("
+        UPDATE staff s
+        JOIN user_all u ON u.nik = s.nik
+        SET s.is_kepala_hr = 1 - s.is_kepala_hr
+        WHERE s.nik = ? AND u.role = 'hr'
+    ");
+    $stmt->execute([$hrNik]);
+    setFlash('success', 'Status kepala HR berhasil diperbarui.');
+    header('Location: ' . BASE_URL . '/admin/users.php');
+    exit;
+}
+
+// Handle reset password (Update pada kolom user_all.password).
+// Admin mengisi password sementara, lalu pengguna menggantinya sendiri di halaman Profil.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_reset_password'])) {
+    $resetNik = trim($_POST['nik'] ?? '');
+    $newPassword = $_POST['new_password'] ?? '';
+
+    if (strlen($newPassword) < 6) {
+        setFlash('danger', 'Password sementara minimal 6 karakter.');
+    } else {
+        // Hanya akun pelamar dan HR yang bisa direset dari sini
+        $stmt = $pdo->prepare("UPDATE user_all SET password = ? WHERE nik = ? AND role IN ('user', 'hr')");
+        $stmt->execute([password_hash($newPassword, PASSWORD_DEFAULT), $resetNik]);
+        if ($stmt->rowCount() > 0) {
+            setFlash('success', 'Password berhasil direset. Berikan password sementara ini kepada pemilik akun.');
+        } else {
+            setFlash('danger', 'Password akun ini tidak dapat direset.');
+        }
     }
     header('Location: ' . BASE_URL . '/admin/users.php');
     exit;
@@ -69,9 +106,11 @@ $roleFilter = $_GET['role'] ?? '';
 $search = trim($_GET['search'] ?? '');
 
 $sql = "
-    SELECT u.nik, u.nama, u.email, u.no_telepon, u.role, u.created_at, ca.position
+    SELECT u.nik, u.nama, u.email, u.no_telepon, u.role, u.created_at,
+           s.jabatan AS position, s.is_kepala_hr,
+           (SELECT COUNT(*) FROM job j WHERE j.pic_nik = u.nik) AS jumlah_pic
     FROM user_all u
-    LEFT JOIN company_admin ca ON ca.nik = u.nik
+    LEFT JOIN staff s ON s.nik = u.nik
     WHERE 1=1
 ";
 $params = [];
@@ -199,12 +238,42 @@ require_once __DIR__ . '/../includes/header.php';
                                     <td>
                                         <span class="badge <?= $roleBadges[$acc['role']] ?>"><?= $roleLabels[$acc['role']] ?></span>
                                     </td>
-                                    <td class="small text-muted"><?= htmlspecialchars($acc['position'] ?? '-') ?></td>
+                                    <td class="small text-muted">
+                                        <?= htmlspecialchars($acc['position'] ?? '-') ?>
+                                        <?php if (!empty($acc['is_kepala_hr'])): ?>
+                                            <span class="badge bg-warning text-dark ms-1">Kepala HR</span>
+                                        <?php endif; ?>
+                                        <?php if ($acc['role'] === 'hr'): ?>
+                                            <div class="small">PIC <?= (int)$acc['jumlah_pic'] ?> lowongan</div>
+                                        <?php endif; ?>
+                                    </td>
                                     <td class="text-end">
                                         <!-- Akun admin dan akun sendiri tidak bisa dihapus -->
+                                        <?php if ($acc['role'] === 'hr'): ?>
+                                            <form method="POST" action="<?= BASE_URL ?>/admin/users.php" class="d-inline">
+                                                <input type="hidden" name="action_toggle_kepala" value="1">
+                                                <input type="hidden" name="nik" value="<?= htmlspecialchars($acc['nik']) ?>">
+                                                <button type="submit" class="btn btn-sm btn-outline-warning">
+                                                    <?= !empty($acc['is_kepala_hr']) ? 'Cabut Kepala HR' : 'Jadikan Kepala HR' ?>
+                                                </button>
+                                            </form>
+                                        <?php endif; ?>
+                                        <?php if ($acc['role'] !== 'admin'): ?>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                    onclick="openResetModal('<?= htmlspecialchars($acc['nik']) ?>', <?= htmlspecialchars(json_encode($acc['nama']), ENT_QUOTES) ?>)">
+                                                <i class="bi bi-key"></i> Reset Password
+                                            </button>
+                                        <?php endif; ?>
                                         <?php if ($acc['role'] !== 'admin' && $acc['nik'] !== $me['nik']): ?>
+                                            <?php
+                                            // Pesan konfirmasi berbeda untuk HR yang masih memegang lowongan
+                                            $pesanHapus = 'Hapus akun ' . $acc['nama'] . '? Semua data yang terhubung juga akan terhapus.';
+                                            if ($acc['role'] === 'hr' && $acc['jumlah_pic'] > 0) {
+                                                $pesanHapus = $acc['nama'] . ' masih menjadi PIC ' . $acc['jumlah_pic'] . ' lowongan. Lowongan tersebut akan menjadi tanpa PIC. Tetap hapus?';
+                                            }
+                                            ?>
                                             <form method="POST" action="<?= BASE_URL ?>/admin/users.php" class="d-inline"
-                                                  onsubmit="return confirm('Hapus akun <?= htmlspecialchars($acc['nama'], ENT_QUOTES) ?>? Semua lamaran dan data yang terhubung juga akan terhapus.');">
+                                                  onsubmit="return confirm(<?= htmlspecialchars(json_encode($pesanHapus), ENT_QUOTES) ?>);">
                                                 <input type="hidden" name="action_delete" value="1">
                                                 <input type="hidden" name="nik" value="<?= htmlspecialchars($acc['nik']) ?>">
                                                 <button type="submit" class="btn btn-sm btn-outline-danger">
@@ -238,7 +307,7 @@ require_once __DIR__ . '/../includes/header.php';
                 <div class="modal-body row g-3">
                     <div class="col-md-6">
                         <label class="form-label small fw-semibold">NIK <span class="text-danger">*</span></label>
-                        <input type="text" name="nik" class="form-control" required maxlength="20">
+                        <input type="text" name="nik" class="form-control" required minlength="16" maxlength="16" pattern="[0-9]{16}">
                     </div>
                     <div class="col-md-6">
                         <label class="form-label small fw-semibold">Nama Lengkap <span class="text-danger">*</span></label>
@@ -257,24 +326,14 @@ require_once __DIR__ . '/../includes/header.php';
                         <input type="tel" name="no_telepon" class="form-control" required>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label small fw-semibold">Jabatan</label>
+                        <label class="form-label small fw-semibold">Jabatan <span class="text-danger">*</span></label>
                         <input type="text" name="jabatan" class="form-control" value="HR Recruiter">
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label small fw-semibold">Tanggal Lahir <span class="text-danger">*</span></label>
-                        <input type="date" name="tanggal_lahir" class="form-control" required>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label small fw-semibold">Pendidikan Terakhir <span class="text-danger">*</span></label>
-                        <input type="text" name="pendidikan_terakhir" class="form-control" required placeholder="cth: S1 Psikologi">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label small fw-semibold">Tahun Lulus <span class="text-danger">*</span></label>
-                        <input type="number" name="tahun_lulus" class="form-control" required min="1970" max="<?= date('Y') ?>">
-                    </div>
                     <div class="col-12">
-                        <label class="form-label small fw-semibold">Alamat</label>
-                        <textarea name="alamat" class="form-control" rows="2"></textarea>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="is_kepala_hr" id="isKepalaHr" value="1">
+                            <label class="form-check-label small" for="isKepalaHr">Jadikan Kepala HR (bisa mengatur PIC dan memproses semua lowongan)</label>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -285,5 +344,40 @@ require_once __DIR__ . '/../includes/header.php';
         </div>
     </div>
 </div>
+
+<!-- Modal Reset Password -->
+<div class="modal fade" id="resetModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="POST" action="<?= BASE_URL ?>/admin/users.php">
+                <input type="hidden" name="action_reset_password" value="1">
+                <input type="hidden" name="nik" id="resetNik">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-key me-1"></i> Reset Password</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small mb-3">Akun: <strong id="resetNama"></strong></p>
+                    <label class="form-label small fw-semibold">Password Sementara <span class="text-danger">*</span></label>
+                    <input type="text" name="new_password" class="form-control" required minlength="6" placeholder="Minimal 6 karakter">
+                    <small class="text-muted">Berikan password ini kepada pemilik akun, lalu minta ia menggantinya di halaman Profil.</small>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary">Simpan Password Baru</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Isi data akun ke modal reset password, lalu tampilkan modalnya
+    function openResetModal(nik, nama) {
+        document.getElementById('resetNik').value = nik;
+        document.getElementById('resetNama').innerText = nama;
+        new bootstrap.Modal(document.getElementById('resetModal')).show();
+    }
+</script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

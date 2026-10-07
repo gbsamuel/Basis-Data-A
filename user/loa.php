@@ -9,19 +9,38 @@ $nik = $user['nik'];
 $appId = isset($_GET['app_id']) ? (int)$_GET['app_id'] : 0;
 $isHr = hasRole('hr');
 
+// Pelamar menjawab offering: terima atau tolak LoA (hanya selama statusnya masih Issued)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isHr && isset($_POST['action_respond_loa'])) {
+    $jawaban = $_POST['jawaban'] ?? '';
+    $idLoa = (int)($_POST['id_loa'] ?? 0);
+    if (in_array($jawaban, ['Accepted', 'Declined'])) {
+        $stmt = $pdo->prepare("
+            UPDATE loa l
+            JOIN application a ON a.id_application = l.id_application
+            SET l.status = ?, l.responded_at = NOW()
+            WHERE l.id_loa = ? AND a.nik = ? AND l.status = 'Issued'
+        ");
+        $stmt->execute([$jawaban, $idLoa, $nik]);
+        setFlash('success', $jawaban === 'Accepted' ? 'Terima kasih, Anda telah menerima offering ini.' : 'Jawaban Anda (menolak offering) sudah tercatat.');
+    }
+    header('Location: ' . BASE_URL . '/user/loa.php' . ($appId ? '?app_id=' . $appId : ''));
+    exit;
+}
+
 // Fetch LOA
 if ($appId > 0) {
     $stmt = $pdo->prepare("
         SELECT l.*, a.applied_at, a.current_status, 
-               j.nama_job, j.job_type, j.location,
+               j.nama_job, j.job_type, j.sistem_kerja,
                c.nama_company, c.alamat as alamat_company, c.email_corporate, c.no_telepon as telp_company, c.industri,
-               u.nama as nama_kandidat, u.nik, u.email as email_kandidat, u.no_telepon as telp_kandidat, u.alamat as alamat_kandidat
+               u.nama as nama_kandidat, u.nik, u.email as email_kandidat, u.no_telepon as telp_kandidat, p.alamat as alamat_kandidat
         FROM loa l
         JOIN application a ON l.id_application = a.id_application
         JOIN job j ON a.id_job = j.id_job
         JOIN division d ON j.id_division = d.id_division
         JOIN company c ON d.id_company = c.id_company
         JOIN user_all u ON a.nik = u.nik
+        JOIN pelamar p ON p.nik = u.nik
         WHERE l.id_application = ? AND (a.nik = ? OR ? = 1)
     ");
     // Pelamar hanya bisa membuka LoA miliknya sendiri, HR bisa membuka semua LoA
@@ -30,15 +49,16 @@ if ($appId > 0) {
     // Find latest LOA for this user
     $stmt = $pdo->prepare("
         SELECT l.*, a.applied_at, a.current_status, 
-               j.nama_job, j.job_type, j.location,
+               j.nama_job, j.job_type, j.sistem_kerja,
                c.nama_company, c.alamat as alamat_company, c.email_corporate, c.no_telepon as telp_company, c.industri,
-               u.nama as nama_kandidat, u.nik, u.email as email_kandidat, u.no_telepon as telp_kandidat, u.alamat as alamat_kandidat
+               u.nama as nama_kandidat, u.nik, u.email as email_kandidat, u.no_telepon as telp_kandidat, p.alamat as alamat_kandidat
         FROM loa l
         JOIN application a ON l.id_application = a.id_application
         JOIN job j ON a.id_job = j.id_job
         JOIN division d ON j.id_division = d.id_division
         JOIN company c ON d.id_company = c.id_company
         JOIN user_all u ON a.nik = u.nik
+        JOIN pelamar p ON p.nik = u.nik
         WHERE a.nik = ?
         ORDER BY l.issue_date DESC
         LIMIT 1
@@ -58,8 +78,20 @@ require_once __DIR__ . '/../includes/header.php';
         <a href="<?= $isHr ? BASE_URL . '/admin/loa_manage.php' : BASE_URL . '/user/dashboard.php' ?>" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left me-1"></i> <?= $isHr ? 'Kembali ke Daftar LoA' : 'Kembali ke Dashboard' ?>
         </a>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 align-items-center">
             <?php if ($loa): ?>
+                <!-- Status jawaban pelamar atas offering -->
+                <span class="badge <?= $loa['status'] === 'Accepted' ? 'bg-success' : ($loa['status'] === 'Declined' ? 'bg-danger' : 'bg-warning text-dark') ?>">
+                    <?= $loa['status'] === 'Issued' ? 'Menunggu Jawaban' : ($loa['status'] === 'Accepted' ? 'Diterima Pelamar' : 'Ditolak Pelamar') ?>
+                </span>
+                <?php if (!$isHr && $loa['status'] === 'Issued'): ?>
+                    <form method="POST" class="d-flex gap-2" onsubmit="return confirm('Yakin dengan jawaban Anda? Jawaban tidak bisa diubah.');">
+                        <input type="hidden" name="action_respond_loa" value="1">
+                        <input type="hidden" name="id_loa" value="<?= $loa['id_loa'] ?>">
+                        <button type="submit" name="jawaban" value="Accepted" class="btn btn-success fw-bold">Terima Offering</button>
+                        <button type="submit" name="jawaban" value="Declined" class="btn btn-outline-danger">Tolak</button>
+                    </form>
+                <?php endif; ?>
                 <button onclick="window.print()" class="btn btn-primary fw-bold shadow-sm">
                     <i class="bi bi-printer me-1"></i> Cetak / Simpan PDF
                 </button>
@@ -136,8 +168,8 @@ require_once __DIR__ . '/../includes/header.php';
                         <td>: <?= htmlspecialchars($loa['job_type']) ?></td>
                     </tr>
                     <tr>
-                        <td><strong>Lokasi Penempatan</strong></td>
-                        <td>: <?= htmlspecialchars($loa['location']) ?></td>
+                        <td><strong>Sistem Kerja</strong></td>
+                        <td>: <?= htmlspecialchars($loa['sistem_kerja']) ?></td>
                     </tr>
                     <tr>
                         <td><strong>Tanggal Mulai Bekerja</strong></td>

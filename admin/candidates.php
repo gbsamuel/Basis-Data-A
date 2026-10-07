@@ -9,21 +9,23 @@ $activeSidebar = 'candidates';
 $search = trim($_GET['search'] ?? '');
 
 $sql = "
-    SELECT u.*,
+    SELECT u.*, p.tanggal_lahir, p.jurusan, p.institusi, p.status_pendidikan, p.tahun_lulus, p.alamat,
+           CONCAT(p.jenjang_pendidikan, ' ', p.jurusan) AS pendidikan_terakhir,
            COUNT(DISTINCT a.id_application) as total_applications,
            COUNT(DISTINCT us.id_skill) as total_skills,
            (SELECT current_status FROM application a2 WHERE a2.nik = u.nik ORDER BY a2.applied_at DESC LIMIT 1) as latest_status
     FROM user_all u
-    LEFT JOIN application a ON u.nik = a.nik
+    JOIN pelamar p ON p.nik = u.nik
+    JOIN application a ON u.nik = a.nik   -- JOIN biasa: hanya pelamar yang pernah melamar minimal 1 kali
     LEFT JOIN user_skill us ON u.nik = us.nik
     WHERE u.role = 'user'
 ";
 $params = [];
 
 if ($search !== '') {
-    $sql .= " AND (u.nama LIKE ? OR u.nik LIKE ? OR u.email LIKE ? OR u.pendidikan_terakhir LIKE ?)";
+    $sql .= " AND (u.nama LIKE ? OR u.nik LIKE ? OR u.email LIKE ? OR p.jurusan LIKE ? OR p.institusi LIKE ?)";
     $term = "%{$search}%";
-    $params = [$term, $term, $term, $term];
+    $params = [$term, $term, $term, $term, $term];
 }
 
 $sql .= " GROUP BY u.nik ORDER BY u.created_at DESC";
@@ -109,7 +111,7 @@ require_once __DIR__ . '/../includes/header.php';
                                     </td>
                                     <td>
                                         <span class="fw-semibold text-dark"><?= htmlspecialchars($c['pendidikan_terakhir']) ?></span>
-                                        <small class="text-muted d-block">Lulus: <?= $c['tahun_lulus'] ?></small>
+                                        <small class="text-muted d-block"><?= htmlspecialchars($c['institusi']) ?> &bull; <?= $c['status_pendidikan'] === 'Lulus' ? 'Lulus' : 'Perkiraan lulus' ?> <?= $c['tahun_lulus'] ?></small>
                                     </td>
                                     <td>
                                         <span class="badge bg-light text-primary border">

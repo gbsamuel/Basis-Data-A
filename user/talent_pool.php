@@ -2,18 +2,23 @@
 require_once __DIR__ . '/../config/database.php';
 requireRole('user');
 
+// Talent pool adalah data internal HR, jadi tidak ditampilkan ke pelamar.
 header('Location: ' . BASE_URL . '/user/dashboard.php');
 exit;
 
-// Check talent pool records
+$pdo = getDB();
+$nik = currentUser()['nik'];
+$pageTitle = 'Status Talent Pool - SIREKA';
+$activeSidebar = 'talent_pool';
+
+// Data talent pool milik pelamar ini (paling banyak 1 baris karena nik UNIQUE)
 $stmt = $pdo->prepare("
     SELECT tp.*, c.nama_company, c.industri, a.id_application, j.nama_job
     FROM talent_pool tp
-    JOIN company c ON tp.id_company = c.id_company
+    JOIN company c ON c.id_company = 1
     LEFT JOIN application a ON tp.source_application = a.id_application
     LEFT JOIN job j ON a.id_job = j.id_job
     WHERE tp.nik = ?
-    ORDER BY tp.added_at DESC
 ");
 $stmt->execute([$nik]);
 $talentRecords = $stmt->fetchAll();

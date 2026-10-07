@@ -28,7 +28,7 @@ $sql = "
 $params = [];
 
 if ($search !== '') {
-    $sql .= " AND (j.nama_job LIKE ? OR j.deskripsi LIKE ? OR j.location LIKE ?)";
+    $sql .= " AND (j.nama_job LIKE ? OR j.deskripsi LIKE ? OR j.sistem_kerja LIKE ?)";
     $term = "%{$search}%";
     $params[] = $term;
     $params[] = $term;
@@ -97,6 +97,7 @@ require_once __DIR__ . '/includes/navbar.php';
                     <option value="Kerja" <?= $jobType === 'Kerja' ? 'selected' : '' ?>>Kerja (Full-Time)</option>
                     <option value="Magang" <?= $jobType === 'Magang' ? 'selected' : '' ?>>Magang (Internship)</option>
                     <option value="Management Trainee" <?= $jobType === 'Management Trainee' ? 'selected' : '' ?>>Management Trainee (MT)</option>
+                    <option value="PKL" <?= $jobType === 'PKL' ? 'selected' : '' ?>>PKL (Praktik Kerja Lapangan)</option>
                 </select>
             </div>
             <div class="col-12 d-flex justify-content-end gap-2 pt-2">
@@ -168,11 +169,14 @@ require_once __DIR__ . '/includes/navbar.php';
                         </p>
                         <div class="pt-3 border-top d-flex flex-column gap-2">
                             <div class="d-flex justify-content-between text-muted small">
-                                <span><i class="bi bi-geo-alt me-1"></i> <?= htmlspecialchars($job['location']) ?></span>
+                                <span><i class="bi bi-laptop me-1"></i> <?= htmlspecialchars($job['sistem_kerja']) ?></span>
                                 <span><i class="bi bi-cash-stack me-1"></i> <?= formatRupiah($job['salary_min']) ?></span>
                             </div>
                             <div class="d-flex justify-content-between align-items-center pt-2">
                                 <small class="text-muted">Deadline: <?= formatTanggalIndo($job['deadline']) ?></small>
+                                <?php if ($job['deadline'] < date('Y-m-d')): ?>
+                                    <span class="badge bg-secondary ms-1">Ditutup</span>
+                                <?php endif; ?>
                                 <a href="<?= BASE_URL ?>/job_detail.php?id=<?= $job['id_job'] ?>" class="btn btn-sm btn-primary">
                                     Lihat Detail
                                 </a>

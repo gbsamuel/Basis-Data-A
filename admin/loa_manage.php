@@ -92,7 +92,13 @@ require_once __DIR__ . '/../includes/header.php';
                                             <?= formatTanggalIndo($l['join_date']) ?>
                                         </td>
                                         <td>
-                                            <span class="badge bg-success"><?= $l['status'] ?></span>
+                                            <!-- Jawaban pelamar: Issued (belum dijawab), Accepted, Declined -->
+                                            <span class="badge <?= $l['status'] === 'Accepted' ? 'bg-success' : ($l['status'] === 'Declined' ? 'bg-danger' : 'bg-warning text-dark') ?>">
+                                                <?= $l['status'] === 'Issued' ? 'Menunggu Jawaban' : ($l['status'] === 'Accepted' ? 'Diterima' : 'Ditolak') ?>
+                                            </span>
+                                            <?php if (!empty($l['responded_at'])): ?>
+                                                <small class="d-block text-muted"><?= formatTanggalIndo($l['responded_at']) ?></small>
+                                            <?php endif; ?>
                                         </td>
                                         <td class="text-end">
                                             <a href="<?= BASE_URL ?>/user/loa.php?app_id=<?= $l['id_application'] ?>" target="_blank" class="btn btn-sm btn-outline-primary" title="Cetak Surat">

@@ -10,7 +10,7 @@ $appId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
 // Fetch application and verify ownership
 $stmt = $pdo->prepare("
-    SELECT a.*, j.nama_job, j.job_type, j.location, j.salary_min, j.salary_max,
+    SELECT a.*, j.nama_job, j.job_type, j.sistem_kerja, j.salary_min, j.salary_max,
            c.nama_company, c.alamat as alamat_company, d.nama_divisi
     FROM application a
     JOIN job j ON a.id_job = j.id_job
@@ -40,9 +40,10 @@ $history = $stmtHist->fetchAll();
 
 // Fetch scheduled interview if any
 $stmtItw = $pdo->prepare("
-    SELECT i.*, itw.nama as nama_interviewer, itw.email as email_interviewer, itw.no_telepon as telp_interviewer, itw.position as jabatan_interviewer
+    SELECT i.*, COALESCE(itw.nama, 'HR (akun sudah dihapus)') as nama_interviewer, itw.email as email_interviewer, itw.no_telepon as telp_interviewer, itws.jabatan as jabatan_interviewer
     FROM interview i
-    JOIN interviewer itw ON i.id_interviewer = itw.id_interviewer
+    LEFT JOIN user_all itw ON itw.nik = i.interviewer_nik   -- pewawancara = akun HR
+    LEFT JOIN staff itws ON itws.nik = i.interviewer_nik
     WHERE i.id_application = ?
     ORDER BY i.created_at DESC
     LIMIT 1

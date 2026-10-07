@@ -14,7 +14,10 @@ $formData = [
     'email' => '',
     'no_telepon' => '',
     'tanggal_lahir' => '',
-    'pendidikan_terakhir' => '',
+    'jenjang_pendidikan' => '',
+    'jurusan' => '',
+    'institusi' => '',
+    'status_pendidikan' => 'Lulus',
     'tahun_lulus' => date('Y'),
     'alamat' => ''
 ];
@@ -25,7 +28,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $formData['email'] = trim($_POST['email'] ?? '');
     $formData['no_telepon'] = trim($_POST['no_telepon'] ?? '');
     $formData['tanggal_lahir'] = trim($_POST['tanggal_lahir'] ?? '');
-    $formData['pendidikan_terakhir'] = trim($_POST['pendidikan_terakhir'] ?? '');
+    $formData['jenjang_pendidikan'] = trim($_POST['jenjang_pendidikan'] ?? '');
+    $formData['jurusan'] = trim($_POST['jurusan'] ?? '');
+    $formData['institusi'] = trim($_POST['institusi'] ?? '');
+    $formData['status_pendidikan'] = trim($_POST['status_pendidikan'] ?? 'Lulus');
     $formData['tahun_lulus'] = (int)($_POST['tahun_lulus'] ?? 0);
     $formData['alamat'] = trim($_POST['alamat'] ?? '');
     $password = $_POST['password'] ?? '';
@@ -52,8 +58,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Tanggal lahir wajib diisi.';
     }
 
-    if (empty($formData['pendidikan_terakhir'])) {
-        $errors[] = 'Pendidikan terakhir wajib dipilih.';
+    if (!in_array($formData['jenjang_pendidikan'], jenjangOptions())) {
+        $errors[] = 'Jenjang pendidikan wajib dipilih.';
+    }
+
+    if (empty($formData['jurusan']) || empty($formData['institusi'])) {
+        $errors[] = 'Jurusan dan nama sekolah/kampus wajib diisi.';
+    }
+
+    if (!in_array($formData['status_pendidikan'], ['Lulus', 'Masih Sekolah/Kuliah'])) {
+        $errors[] = 'Status pendidikan tidak valid.';
     }
 
     if (empty($formData['alamat'])) {
@@ -83,24 +97,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // Insert user
+    // Simpan akun: 1 baris di user_all (data akun) + 1 baris di pelamar (data khusus pelamar).
+    // Dipakai transaksi supaya keduanya tersimpan bersama, atau tidak sama sekali.
     if (empty($errors)) {
         $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-        $stmtInsert = $pdo->prepare("
-            INSERT INTO user_all (nik, nama, email, no_telepon, tanggal_lahir, pendidikan_terakhir, tahun_lulus, alamat, password, role)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'user')
-        ");
-        $success = $stmtInsert->execute([
-            $formData['nik'],
-            $formData['nama'],
-            $formData['email'],
-            $formData['no_telepon'],
-            $formData['tanggal_lahir'],
-            $formData['pendidikan_terakhir'],
-            $formData['tahun_lulus'],
-            $formData['alamat'],
-            $hashedPassword
-        ]);
+        try {
+            $pdo->beginTransaction();
+
+            $stmtUser = $pdo->prepare("
+                INSERT INTO user_all (nik, nama, email, password, no_telepon, role)
+                VALUES (?, ?, ?, ?, ?, 'user')
+            ");
+            $stmtUser->execute([
+                $formData['nik'], $formData['nama'], $formData['email'], $hashedPassword, $formData['no_telepon']
+            ]);
+
+            $stmtPelamar = $pdo->prepare("
+                INSERT INTO pelamar (nik, tanggal_lahir, jenjang_pendidikan, jurusan, institusi, status_pendidikan, tahun_lulus, alamat)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+            $stmtPelamar->execute([
+                $formData['nik'], $formData['tanggal_lahir'], $formData['jenjang_pendidikan'], $formData['jurusan'],
+                $formData['institusi'], $formData['status_pendidikan'], $formData['tahun_lulus'], $formData['alamat']
+            ]);
+
+            $pdo->commit();
+            $success = true;
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            $success = false;
+        }
 
         if ($success) {
             setFlash('success', 'Pendaftaran akun berhasil! Silakan login dan lengkapi keahlian Anda.');
@@ -168,20 +194,36 @@ require_once __DIR__ . '/../includes/navbar.php';
                     </div>
 
                     <div class="col-md-4">
-                        <label class="form-label small fw-semibold">Pendidikan Terakhir <span class="text-danger">*</span></label>
-                        <select name="pendidikan_terakhir" required class="form-select">
+                        <label class="form-label small fw-semibold">Jenjang Pendidikan <span class="text-danger">*</span></label>
+                        <select name="jenjang_pendidikan" required class="form-select">
                             <option value="">Pilih Jenjang</option>
-                            <option value="SMA / SMK" <?= $formData['pendidikan_terakhir'] === 'SMA / SMK' ? 'selected' : '' ?>>SMA / SMK</option>
-                            <option value="D3" <?= $formData['pendidikan_terakhir'] === 'D3' ? 'selected' : '' ?>>D3</option>
-                            <option value="D4 / S1" <?= $formData['pendidikan_terakhir'] === 'D4 / S1' ? 'selected' : '' ?>>D4 / S1</option>
-                            <option value="S2" <?= $formData['pendidikan_terakhir'] === 'S2' ? 'selected' : '' ?>>S2</option>
-                            <option value="S3" <?= $formData['pendidikan_terakhir'] === 'S3' ? 'selected' : '' ?>>S3</option>
+                            <?php foreach (jenjangOptions() as $jenjang): ?>
+                                <option value="<?= $jenjang ?>" <?= $formData['jenjang_pendidikan'] === $jenjang ? 'selected' : '' ?>><?= $jenjang ?></option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
 
                     <div class="col-md-4">
-                        <label class="form-label small fw-semibold">Tahun Lulus <span class="text-danger">*</span></label>
-                        <input type="number" name="tahun_lulus" min="1970" max="<?= date('Y') + 1 ?>" required class="form-control" value="<?= htmlspecialchars((string)$formData['tahun_lulus']) ?>">
+                        <label class="form-label small fw-semibold">Status Pendidikan <span class="text-danger">*</span></label>
+                        <select name="status_pendidikan" required class="form-select">
+                            <option value="Lulus" <?= $formData['status_pendidikan'] === 'Lulus' ? 'selected' : '' ?>>Sudah Lulus</option>
+                            <option value="Masih Sekolah/Kuliah" <?= $formData['status_pendidikan'] === 'Masih Sekolah/Kuliah' ? 'selected' : '' ?>>Masih Sekolah/Kuliah (untuk Magang/PKL)</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Nama Sekolah / Kampus <span class="text-danger">*</span></label>
+                        <input type="text" name="institusi" required class="form-control" placeholder="cth: SMK Negeri 1 Depok / Universitas Airlangga" value="<?= htmlspecialchars($formData['institusi']) ?>">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Jurusan <span class="text-danger">*</span></label>
+                        <input type="text" name="jurusan" required class="form-control" placeholder="cth: Teknik Informatika" value="<?= htmlspecialchars($formData['jurusan']) ?>">
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold">Tahun Lulus / Perkiraan Lulus <span class="text-danger">*</span></label>
+                        <input type="number" name="tahun_lulus" min="1970" max="<?= date('Y') + 6 ?>" required class="form-control" value="<?= htmlspecialchars((string)$formData['tahun_lulus']) ?>">
                     </div>
 
                     <div class="col-12">

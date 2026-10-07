@@ -9,13 +9,16 @@ $activeSidebar = 'applications';
 $search = trim($_GET['search'] ?? '');
 $jobFilter = !empty($_GET['job_id']) ? (int)$_GET['job_id'] : null;
 $statusFilter = trim($_GET['status'] ?? '');
+$onlyMine = ($_GET['mine'] ?? '') === '1';   // hanya lamaran untuk lowongan yang saya pegang (PIC)
+$myNik = currentUser()['nik'];
 
 $sql = "
-    SELECT a.*, u.nama as nama_kandidat, u.nik, u.email as email_kandidat, u.no_telepon, u.pendidikan_terakhir,
-           j.nama_job, j.job_type, c.nama_company, d.nama_divisi,
+    SELECT a.*, u.nama as nama_kandidat, u.nik, u.email as email_kandidat, u.no_telepon, CONCAT(p.jenjang_pendidikan, ' ', p.jurusan) AS pendidikan_terakhir,
+           j.nama_job, j.job_type, j.pic_nik, c.nama_company, d.nama_divisi,
            (SELECT COUNT(*) FROM interview i WHERE i.id_application = a.id_application AND i.status = 'Scheduled') as has_interview
     FROM application a
     JOIN user_all u ON a.nik = u.nik
+    JOIN pelamar p ON p.nik = u.nik
     JOIN job j ON a.id_job = j.id_job
     JOIN division d ON j.id_division = d.id_division
     JOIN company c ON d.id_company = c.id_company
@@ -40,6 +43,11 @@ if ($jobFilter) {
 if ($statusFilter !== '') {
     $sql .= " AND a.current_status = ?";
     $params[] = $statusFilter;
+}
+
+if ($onlyMine) {
+    $sql .= " AND j.pic_nik = ?";
+    $params[] = $myNik;
 }
 
 $sql .= " ORDER BY a.applied_at DESC";
@@ -105,6 +113,12 @@ require_once __DIR__ . '/../includes/header.php';
                             <option value="Accepted" <?= $statusFilter === 'Accepted' ? 'selected' : '' ?>>Accepted</option>
                             <option value="Rejected" <?= $statusFilter === 'Rejected' ? 'selected' : '' ?>>Rejected</option>
                         </select>
+                    </div>
+                    <div class="col-auto">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="mine" value="1" id="onlyMine" <?= $onlyMine ? 'checked' : '' ?>>
+                            <label class="form-check-label small" for="onlyMine">Lowongan saya</label>
+                        </div>
                     </div>
                     <div class="col-auto">
                         <button type="submit" class="btn btn-sm btn-primary px-3">Filter</button>
@@ -175,9 +189,16 @@ require_once __DIR__ . '/../includes/header.php';
                                             </a>
                                         </td>
                                         <td class="text-end">
-                                            <a href="<?= BASE_URL ?>/admin/application_detail.php?id=<?= $app['id_application'] ?>" class="btn btn-sm btn-primary">
-                                                <i class="bi bi-sliders me-1"></i> Review & Status
-                                            </a>
+                                            <?php if (isKepalaHr() || $app['pic_nik'] === $myNik): ?>
+                                                <a href="<?= BASE_URL ?>/admin/application_detail.php?id=<?= $app['id_application'] ?>" class="btn btn-sm btn-primary">
+                                                    <i class="bi bi-sliders me-1"></i> Review & Status
+                                                </a>
+                                            <?php else: ?>
+                                                <!-- Bukan PIC: hanya bisa melihat -->
+                                                <a href="<?= BASE_URL ?>/admin/application_detail.php?id=<?= $app['id_application'] ?>" class="btn btn-sm btn-outline-secondary">
+                                                    <i class="bi bi-eye me-1"></i> Lihat
+                                                </a>
+                                            <?php endif; ?>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>

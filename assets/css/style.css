@@ -1397,3 +1397,22 @@ body.is-scrolled .top-navbar {
         animation: none;
     }
 }
+
+/* ---------- 12. Perataan tabel dan tombol ---------- */
+/* Judul kolom tabel rata tengah (kiri-kanan dan atas-bawah) */
+.main-content .table > thead > tr > th {
+    text-align: center !important;
+    vertical-align: middle;
+}
+
+/* Isi tabel rata tengah atas-bawah */
+.main-content .table > tbody > tr > td {
+    vertical-align: middle;
+}
+
+/* Tulisan di dalam tombol selalu berada tepat di tengah */
+.main-content .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}

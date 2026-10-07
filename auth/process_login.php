@@ -32,7 +32,8 @@ $_SESSION['user_nik'] = $user['nik'];
 $_SESSION['user_name'] = $user['nama'];
 $_SESSION['user_role'] = $user['role'];
 $_SESSION['user_email'] = $user['email'];
-$_SESSION['user'] = $user;
+// Simpan data lengkap (akun + data pelamar / data staf) ke session
+$_SESSION['user'] = loadUserProfile($pdo, $user['nik']);
 
 setFlash('success', 'Selamat datang kembali, ' . htmlspecialchars($user['nama']) . '!');
 

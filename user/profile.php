@@ -3,8 +3,11 @@ require_once __DIR__ . '/../config/database.php';
 requireRole('user');
 
 $pdo = getDB();
-$user = currentUser();
-$nik = $user['nik'];
+$nik = currentUser()['nik'];
+
+// Ambil data terbaru (akun + data pelamar) lalu simpan ulang ke session
+$user = loadUserProfile($pdo, $nik);
+$_SESSION['user'] = $user;
 
 $pageTitle = 'Profil & Pengelolaan Keahlian - SIREKA';
 $activeSidebar = 'profile';
@@ -14,22 +17,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_update_profile
     $nama = trim($_POST['nama'] ?? '');
     $no_telepon = trim($_POST['no_telepon'] ?? '');
     $tanggal_lahir = trim($_POST['tanggal_lahir'] ?? '');
-    $pendidikan = trim($_POST['pendidikan_terakhir'] ?? '');
+    $jenjang = trim($_POST['jenjang_pendidikan'] ?? '');
+    $jurusan = trim($_POST['jurusan'] ?? '');
+    $institusi = trim($_POST['institusi'] ?? '');
+    $statusPendidikan = trim($_POST['status_pendidikan'] ?? 'Lulus');
     $tahun_lulus = (int)($_POST['tahun_lulus'] ?? 0);
     $alamat = trim($_POST['alamat'] ?? '');
 
-    if (!empty($nama) && !empty($no_telepon) && !empty($pendidikan)) {
+    if (!empty($nama) && !empty($no_telepon) && in_array($jenjang, jenjangOptions()) && !empty($jurusan) && !empty($institusi)) {
+        // Data akun disimpan di user_all
+        $stmt = $pdo->prepare("UPDATE user_all SET nama = ?, no_telepon = ? WHERE nik = ?");
+        $stmt->execute([$nama, $no_telepon, $nik]);
+
+        // Data khusus pelamar disimpan di tabel pelamar
         $stmt = $pdo->prepare("
-            UPDATE user_all 
-            SET nama = ?, no_telepon = ?, tanggal_lahir = ?, pendidikan_terakhir = ?, tahun_lulus = ?, alamat = ?
+            UPDATE pelamar
+            SET tanggal_lahir = ?, jenjang_pendidikan = ?, jurusan = ?, institusi = ?, status_pendidikan = ?, tahun_lulus = ?, alamat = ?
             WHERE nik = ?
         ");
-        $stmt->execute([$nama, $no_telepon, $tanggal_lahir, $pendidikan, $tahun_lulus, $alamat, $nik]);
+        $stmt->execute([$tanggal_lahir, $jenjang, $jurusan, $institusi, $statusPendidikan, $tahun_lulus, $alamat, $nik]);
 
         // Refresh session
-        $stmtUser = $pdo->prepare("SELECT * FROM user_all WHERE nik = ?");
-        $stmtUser->execute([$nik]);
-        $_SESSION['user'] = $stmtUser->fetch();
+        $_SESSION['user'] = loadUserProfile($pdo, $nik);
         $_SESSION['user_name'] = $nama;
 
         setFlash('success', 'Profil Anda berhasil diperbarui.');
@@ -260,18 +269,34 @@ require_once __DIR__ . '/../includes/header.php';
                             </div>
 
                             <div class="col-md-4">
-                                <label class="form-label small fw-semibold">Pendidikan Terakhir <span class="text-danger">*</span></label>
-                                <select name="pendidikan_terakhir" class="form-select" required>
-                                    <option value="SMA / SMK" <?= ($user['pendidikan_terakhir'] ?? '') === 'SMA / SMK' ? 'selected' : '' ?>>SMA / SMK</option>
-                                    <option value="D3" <?= ($user['pendidikan_terakhir'] ?? '') === 'D3' ? 'selected' : '' ?>>D3</option>
-                                    <option value="D4 / S1" <?= ($user['pendidikan_terakhir'] ?? '') === 'D4 / S1' ? 'selected' : '' ?>>D4 / S1</option>
-                                    <option value="S2" <?= ($user['pendidikan_terakhir'] ?? '') === 'S2' ? 'selected' : '' ?>>S2</option>
-                                    <option value="S3" <?= ($user['pendidikan_terakhir'] ?? '') === 'S3' ? 'selected' : '' ?>>S3</option>
+                                <label class="form-label small fw-semibold">Jenjang Pendidikan <span class="text-danger">*</span></label>
+                                <select name="jenjang_pendidikan" class="form-select" required>
+                                    <?php foreach (jenjangOptions() as $jenjang): ?>
+                                        <option value="<?= $jenjang ?>" <?= ($user['jenjang_pendidikan'] ?? '') === $jenjang ? 'selected' : '' ?>><?= $jenjang ?></option>
+                                    <?php endforeach; ?>
                                 </select>
                             </div>
 
                             <div class="col-md-4">
-                                <label class="form-label small fw-semibold">Tahun Lulus <span class="text-danger">*</span></label>
+                                <label class="form-label small fw-semibold">Status Pendidikan <span class="text-danger">*</span></label>
+                                <select name="status_pendidikan" class="form-select" required>
+                                    <option value="Lulus" <?= ($user['status_pendidikan'] ?? '') === 'Lulus' ? 'selected' : '' ?>>Sudah Lulus</option>
+                                    <option value="Masih Sekolah/Kuliah" <?= ($user['status_pendidikan'] ?? '') === 'Masih Sekolah/Kuliah' ? 'selected' : '' ?>>Masih Sekolah/Kuliah</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">Nama Sekolah / Kampus <span class="text-danger">*</span></label>
+                                <input type="text" name="institusi" class="form-control" required value="<?= htmlspecialchars($user['institusi'] ?? '') ?>">
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">Jurusan <span class="text-danger">*</span></label>
+                                <input type="text" name="jurusan" class="form-control" required value="<?= htmlspecialchars($user['jurusan'] ?? '') ?>">
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">Tahun Lulus / Perkiraan Lulus <span class="text-danger">*</span></label>
                                 <input type="number" name="tahun_lulus" class="form-control" required value="<?= htmlspecialchars((string)$user['tahun_lulus']) ?>">
                             </div>
 

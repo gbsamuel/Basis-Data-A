@@ -5,12 +5,15 @@
  */
 $topUser = currentUser();
 
-// Saat foto/nama diklik: pelamar ke profil pelamar, HR dan interviewer ke profil staf
+// Saat foto/nama diklik: pelamar ke profil pelamar, HR dan admin ke profil staf
 $topLink = hasRole('user') ? BASE_URL . '/user/profile.php' : BASE_URL . '/admin/profile.php';
 
 // Keterangan di bawah nama sesuai role
 $roleLabels = ['user' => 'Pelamar', 'hr' => 'HR', 'admin' => 'Admin'];
 $topRole = $roleLabels[$topUser['role'] ?? 'user'] ?? '';
+if (isKepalaHr()) {
+    $topRole = 'Kepala HR';
+}
 ?>
 <a href="<?= $topLink ?>" class="topbar-user" title="Profil Saya">
     <!-- Nama di kiri (rata kanan), foto di kanan -->

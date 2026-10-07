@@ -14,6 +14,9 @@ $stmt = $pdo->prepare("
 $stmt->execute([$jobId]);
 $job = $stmt->fetch();
 
+// Lowongan dianggap ditutup jika statusnya bukan Open atau sudah lewat deadline
+$isClosed = $job && ($job['status'] !== 'Open' || $job['deadline'] < date('Y-m-d'));
+
 if (!$job) {
     setFlash('danger', 'Lowongan pekerjaan tidak ditemukan.');
     header('Location: ' . BASE_URL . '/jobs.php');
@@ -83,6 +86,10 @@ require_once __DIR__ . '/includes/navbar.php';
                             <i class="bi bi-clock-history me-1"></i> Lacak Status
                         </a>
                     </div>
+                <?php elseif ($isClosed): ?>
+                    <button class="btn btn-secondary px-4 py-2.5" disabled>
+                        <i class="bi bi-lock me-1"></i> Pendaftaran Ditutup
+                    </button>
                 <?php else: ?>
                     <a href="<?= BASE_URL ?>/user/apply.php?job_id=<?= $jobId ?>" class="btn btn-warning text-dark fw-bold px-4 py-2.5 fs-6 shadow">
                         <i class="bi bi-send-check me-1"></i> Lamar Sekarang (Apply Now)
@@ -171,12 +178,12 @@ require_once __DIR__ . '/includes/navbar.php';
                         <span class="fw-bold"><?= htmlspecialchars($job['job_type']) ?></span>
                     </li>
                     <li class="d-flex justify-content-between">
-                        <span class="text-muted"><i class="bi bi-geo-alt me-2"></i> Lokasi:</span>
-                        <span class="fw-bold"><?= htmlspecialchars($job['location']) ?></span>
+                        <span class="text-muted"><i class="bi bi-laptop me-2"></i> Sistem Kerja:</span>
+                        <span class="fw-bold"><?= htmlspecialchars($job['sistem_kerja']) ?></span>
                     </li>
                     <li class="d-flex justify-content-between">
                         <span class="text-muted"><i class="bi bi-mortarboard me-2"></i> Pendidikan:</span>
-                        <span class="fw-bold"><?= htmlspecialchars($job['education_requirement']) ?></span>
+                        <span class="fw-bold">Minimal <?= htmlspecialchars($job['min_pendidikan']) ?></span>
                     </li>
                     <li class="d-flex justify-content-between">
                         <span class="text-muted"><i class="bi bi-clock-history me-2"></i> Pengalaman:</span>
@@ -208,6 +215,8 @@ require_once __DIR__ . '/includes/navbar.php';
                         <a href="<?= BASE_URL ?>/user/tracking.php?id=<?= $applicationId ?>" class="btn btn-warning w-100 py-2 text-dark fw-bold">
                             <i class="bi bi-clock-history me-1"></i> Pantau Proses Lamaran
                         </a>
+                    <?php elseif ($isClosed): ?>
+                        <button class="btn btn-secondary w-100 py-2" disabled>Pendaftaran Ditutup</button>
                     <?php elseif (!hasRole(['hr', 'admin'])): ?>
                         <a href="<?= BASE_URL ?>/user/apply.php?job_id=<?= $jobId ?>" class="btn btn-primary w-100 py-2 fw-bold">
                             Lamar Sekarang

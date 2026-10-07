@@ -38,13 +38,14 @@ $recentApps = $stmtRecent->fetchAll();
 
 // Get upcoming interviews
 $stmtInterviews = $pdo->prepare("
-    SELECT i.*, j.nama_job, c.nama_company, itw.nama as nama_interviewer
+    SELECT i.*, j.nama_job, c.nama_company, COALESCE(itw.nama, 'HR (akun sudah dihapus)') as nama_interviewer
     FROM interview i
     JOIN application a ON i.id_application = a.id_application
     JOIN job j ON a.id_job = j.id_job
     JOIN division d ON j.id_division = d.id_division
     JOIN company c ON d.id_company = c.id_company
-    JOIN interviewer itw ON i.id_interviewer = itw.id_interviewer
+    LEFT JOIN user_all itw ON itw.nik = i.interviewer_nik   -- pewawancara = akun HR
+    LEFT JOIN staff itws ON itws.nik = i.interviewer_nik
     WHERE a.nik = ? AND i.status = 'Scheduled' AND i.tanggal >= CURDATE()
     ORDER BY i.tanggal ASC, i.waktu ASC
     LIMIT 2
